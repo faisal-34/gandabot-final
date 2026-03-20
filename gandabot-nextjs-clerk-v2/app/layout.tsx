@@ -4,7 +4,6 @@ import {
   SignInButton,
   SignUpButton,
   UserButton,
-  Show,
 } from "@clerk/nextjs";
 import "./globals.css";
 
