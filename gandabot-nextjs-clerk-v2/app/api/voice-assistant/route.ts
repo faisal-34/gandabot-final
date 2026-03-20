@@ -25,7 +25,11 @@ export async function POST(req: NextRequest) {
       signal: AbortSignal.timeout(15000),
     });
     const data = await res.json();
-    return NextResponse.json(JSON.parse(data.choices[0]?.message?.content || "{}"));
+    try {
+      return NextResponse.json(JSON.parse(data.choices[0]?.message?.content || "{}"));
+    } catch {
+      return NextResponse.json({ english: text, luganda: "Translation unavailable", cultural: "Please try again." });
+    }
   } catch {
     return NextResponse.json({ english: text, luganda: "Translation unavailable", cultural: "Please try again." });
   }

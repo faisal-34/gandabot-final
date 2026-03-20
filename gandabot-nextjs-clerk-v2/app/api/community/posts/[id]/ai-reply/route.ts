@@ -10,7 +10,8 @@ const FALLBACKS: Record<string, string> = {
 };
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  await auth.protect();
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
   const rows = await query("SELECT title, content, category FROM community_posts WHERE id=$1", [parseInt(id)]);
   if (!rows.length) return NextResponse.json({ error: "Post not found" }, { status: 404 });

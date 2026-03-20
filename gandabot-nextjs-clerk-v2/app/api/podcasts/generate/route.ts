@@ -32,7 +32,8 @@ export async function POST(req: NextRequest) {
         signal: AbortSignal.timeout(25000),
       });
       const d = await res.json();
-      const parsed = JSON.parse(d.choices[0]?.message?.content || "{}");
+      let parsed: any = {};
+      try { parsed = JSON.parse(d.choices[0]?.message?.content || "{}"); } catch { /* use defaults */ }
       title = parsed.title || title;
       description = parsed.description || description;
       script = parsed.script || script;

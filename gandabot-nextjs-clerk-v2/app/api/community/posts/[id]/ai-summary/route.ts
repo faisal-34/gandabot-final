@@ -3,7 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  await auth.protect();
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
   const rows = await query("SELECT title, content, reply_count FROM community_posts WHERE id=$1", [parseInt(id)]);
   if (!rows.length) return NextResponse.json({ error: "Not found" }, { status: 404 });

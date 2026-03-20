@@ -35,7 +35,12 @@ export async function GET(req: NextRequest) {
       signal: AbortSignal.timeout(20000),
     });
     const data = await res.json();
-    const result = JSON.parse(data.choices[0]?.message?.content || "{}");
+    let result: Record<string, string> = {};
+    try {
+      result = JSON.parse(data.choices[0]?.message?.content || "{}");
+    } catch {
+      console.error("Country explorer: failed to parse OpenAI JSON response");
+    }
     CACHED[country] = result;
     return NextResponse.json(result);
   } catch {
