@@ -26,17 +26,8 @@ public/sw.js.map
 public/workbox-*.js
 public/workbox-*.js.map
 
-# App icons (generated — run npm run icons)
-public/icons/icon-72x72.png
-public/icons/icon-96x96.png
-public/icons/icon-128x128.png
-public/icons/icon-144x144.png
-public/icons/icon-152x152.png
-public/icons/icon-192x192.png
-public/icons/icon-384x384.png
-public/icons/icon-512x512.png
-public/icons/icon-maskable-192x192.png
-public/icons/icon-maskable-512x512.png
+# App icons source (do NOT ignore generated icons — they are committed)
+# public/icons/ is committed so Vercel can serve them
 
 # Capacitor native platforms (generated — run: npx cap add ios/android)
 ios/

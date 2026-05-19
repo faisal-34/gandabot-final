@@ -28,6 +28,7 @@
       "shortName": "Translate",
       "url": "/app/chat",
       "chooseIconDialog": false,
+      "chosenIconUrl": "https://www.gandabot.com/icons/icon-96x96.png",
       "icons": [
         {
           "src": "https://www.gandabot.com/icons/icon-96x96.png",
@@ -40,6 +41,7 @@
       "shortName": "Learn",
       "url": "/app/tutor",
       "chooseIconDialog": false,
+      "chosenIconUrl": "https://www.gandabot.com/icons/icon-96x96.png",
       "icons": [
         {
           "src": "https://www.gandabot.com/icons/icon-96x96.png",
@@ -62,5 +64,10 @@
   "fullScopeUrl": "https://www.gandabot.com/",
   "minSdkVersion": 19,
   "orientation": "default",
-  "fingerprints": []
+  "fingerprints": [
+    {
+      "type": "SHA256",
+      "value": "84:F2:34:89:77:81:F7:B6:D7:53:2E:94:6D:B2:37:50:8C:41:A1:1F:5A:EC:8E:D2:47:D8:A5:6C:28:89:B7:37"
+    }
+  ]
 }

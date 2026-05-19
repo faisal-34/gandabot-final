@@ -7,9 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-
     "icons": "node scripts/generate-icons.mjs",
-
     "cap:sync": "npx cap sync",
     "cap:open:ios": "npx cap open ios",
     "cap:open:android": "npx cap open android",
@@ -17,11 +15,9 @@
     "cap:run:android": "npx cap run android",
     "cap:build:android": "npx cap build android",
     "cap:build:ios": "npx cap build ios",
-
     "twa:init": "npx @bubblewrap/cli init --manifest=https://www.gandabot.com/manifest.json --directory=android-twa",
     "twa:build": "npx @bubblewrap/cli build --skipPwaValidation",
     "twa:update": "npx @bubblewrap/cli update --skipPwaValidation",
-
     "store:android": "npm run build && npm run twa:build",
     "store:ios": "npm run build && npm run cap:build:ios"
   },
