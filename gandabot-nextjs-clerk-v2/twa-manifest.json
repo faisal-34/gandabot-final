@@ -12,9 +12,9 @@
   "backgroundColor": "#0C1F17",
   "enableNotifications": true,
   "startUrl": "/",
-  "iconUrl": "https://www.gandabot.com/icons/icon-512x512.png",
-  "maskableIconUrl": "https://www.gandabot.com/icons/icon-maskable-512x512.png",
-  "monochromeIconUrl": "https://www.gandabot.com/icons/icon-512x512.png",
+  "iconUrl": "https://www.gandabot.com/icons/icon-512.png",
+  "maskableIconUrl": "https://www.gandabot.com/icons/icon-512.png",
+  "monochromeIconUrl": "https://www.gandabot.com/icons/icon-512.png",
   "splashScreenFadeOutDuration": 300,
   "signingKey": {
     "path": "./android.keystore",
@@ -28,11 +28,11 @@
       "shortName": "Translate",
       "url": "/app/chat",
       "chooseIconDialog": false,
-      "chosenIconUrl": "https://www.gandabot.com/icons/icon-96x96.png",
+      "chosenIconUrl": "https://www.gandabot.com/icons/icon-192.png",
       "icons": [
         {
-          "src": "https://www.gandabot.com/icons/icon-96x96.png",
-          "sizes": "96x96"
+          "src": "https://www.gandabot.com/icons/icon-192.png",
+          "sizes": "192x192"
         }
       ]
     },
@@ -41,11 +41,11 @@
       "shortName": "Learn",
       "url": "/app/tutor",
       "chooseIconDialog": false,
-      "chosenIconUrl": "https://www.gandabot.com/icons/icon-96x96.png",
+      "chosenIconUrl": "https://www.gandabot.com/icons/icon-192.png",
       "icons": [
         {
-          "src": "https://www.gandabot.com/icons/icon-96x96.png",
-          "sizes": "96x96"
+          "src": "https://www.gandabot.com/icons/icon-192.png",
+          "sizes": "192x192"
         }
       ]
     }
@@ -62,7 +62,7 @@
   "isChromeOSOnly": false,
   "isMetaQuest": false,
   "fullScopeUrl": "https://www.gandabot.com/",
-  "minSdkVersion": 19,
+  "minSdkVersion": 21,
   "orientation": "default",
   "fingerprints": [
     {
