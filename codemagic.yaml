@@ -1,0 +1,43 @@
+workflows:
+  ios-capacitor-workflow:
+    name: GandaBot iOS – App Store
+    max_build_duration: 120
+    integrations:
+      app_store_connect: Codemagic_ASC_Key
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.gandabot.app
+      node: v20.11.0
+      xcode: latest
+      cocoapods: default
+    working_directory: gandabot-nextjs-clerk-v2
+    scripts:
+      - name: Install npm dependencies
+        script: npm ci
+      - name: Add Capacitor iOS platform
+        script: |
+          # Only add if ios/ folder doesn't exist yet
+          if [ ! -d "ios" ]; then
+            npx cap add ios
+          else
+            echo "ios/ already present, skipping cap add"
+          fi
+      - name: Sync Capacitor iOS
+        script: npx cap sync ios --no-build
+      - name: Set up code signing
+        script: xcode-project use-profiles
+      - name: Build iOS IPA
+        script: |
+          xcode-project build-ipa \
+            --workspace "ios/App/App.xcworkspace" \
+            --scheme "App"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        submit_to_app_store: false
