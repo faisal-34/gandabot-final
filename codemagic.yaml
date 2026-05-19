@@ -5,9 +5,6 @@ workflows:
     integrations:
       app_store_connect: Codemagic_ASC_Key
     environment:
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.gandabot.app
       node: v20.11.0
       xcode: latest
       cocoapods: default
@@ -26,7 +23,14 @@ workflows:
       - name: Sync Capacitor iOS
         script: npx cap sync ios --no-build
       - name: Set up code signing
-        script: xcode-project use-profiles --create-certificate
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files \
+            com.gandabot.app \
+            --type IOS_APP_STORE \
+            --create
+          keychain add-certificates
+          xcode-project use-profiles
       - name: Build iOS IPA
         script: |
           xcode-project build-ipa \
