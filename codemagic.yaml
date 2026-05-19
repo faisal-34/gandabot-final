@@ -25,9 +25,9 @@ workflows:
       - name: Set up code signing
         script: |
           keychain initialize
-          # Revoke any existing iOS Distribution certs (no private key available for them)
-          app-store-connect certificates revoke --type IOS_DISTRIBUTION || true
-          # Fetch/create a fresh certificate + provisioning profile
+          # Create a fresh distribution cert — generates new private key on this Mac
+          app-store-connect certificates create --type IOS_DISTRIBUTION --save
+          # Now fetch (cert already exists) + create provisioning profile
           app-store-connect fetch-signing-files \
             com.gandabot.app \
             --type IOS_APP_STORE \
