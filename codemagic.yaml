@@ -28,7 +28,8 @@ workflows:
           app-store-connect fetch-signing-files \
             com.gandabot.app \
             --type IOS_APP_STORE \
-            --create
+            --create \
+            --create-certificate
           keychain add-certificates
           xcode-project use-profiles
       - name: Build iOS IPA
