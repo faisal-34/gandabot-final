@@ -32,16 +32,9 @@ workflows:
           # matching private key here → causes "Cannot save Signing Certificates
           # without certificate private key".  Wipe them so --create starts fresh.
           echo "=== Purging stale IOS_DISTRIBUTION certificates ==="
-          STALE_IDS=$(app-store-connect certificates list \
-            --type IOS_DISTRIBUTION --json 2>/dev/null \
-            | python3 -c "
-import sys, json
-try:
-    for c in json.load(sys.stdin):
-        cid = c.get('id','')
-        if cid: print(cid)
-except: pass
-" 2>/dev/null || true)
+          STALE_IDS=$(app-store-connect certificates list --type IOS_DISTRIBUTION --json 2>/dev/null \
+            | python3 -c "import sys,json; [print(c['id']) for c in json.load(sys.stdin) if c.get('id')]" \
+            2>/dev/null || true)
 
           if [ -n "$STALE_IDS" ]; then
             echo "$STALE_IDS" | while IFS= read -r cid; do
