@@ -24,10 +24,36 @@ workflows:
         script: npx cap sync ios
       - name: Set up code signing
         script: |
+          set -e
           keychain initialize
-          # Create a fresh distribution cert — generates new private key on this Mac
-          app-store-connect certificates create --type IOS_DISTRIBUTION --save
-          # Now fetch (cert already exists) + create provisioning profile
+
+          # ── Delete stale distribution certs left by previous builds ──────────
+          # Each Codemagic Mac is ephemeral; old certs in the portal have no
+          # matching private key here → causes "Cannot save Signing Certificates
+          # without certificate private key".  Wipe them so --create starts fresh.
+          echo "=== Purging stale IOS_DISTRIBUTION certificates ==="
+          STALE_IDS=$(app-store-connect certificates list \
+            --type IOS_DISTRIBUTION --json 2>/dev/null \
+            | python3 -c "
+import sys, json
+try:
+    for c in json.load(sys.stdin):
+        cid = c.get('id','')
+        if cid: print(cid)
+except: pass
+" 2>/dev/null || true)
+
+          if [ -n "$STALE_IDS" ]; then
+            echo "$STALE_IDS" | while IFS= read -r cid; do
+              echo "  Deleting cert $cid"
+              app-store-connect certificates delete "$cid" || true
+            done
+          else
+            echo "  No stale certs found."
+          fi
+
+          # ── Create fresh cert (private key generated on THIS Mac) + profile ──
+          echo "=== Fetching/creating signing files ==="
           app-store-connect fetch-signing-files \
             com.gandabot.app \
             --type IOS_APP_STORE \
