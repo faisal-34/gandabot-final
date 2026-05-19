@@ -21,7 +21,7 @@ workflows:
             echo "ios/ already present, skipping cap add"
           fi
       - name: Sync Capacitor iOS
-        script: npx cap sync ios --no-build
+        script: npx cap sync ios
       - name: Set up code signing
         script: |
           keychain initialize
