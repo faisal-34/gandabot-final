@@ -27,27 +27,29 @@ if (!existsSync(OUT_DIR)) mkdirSync(OUT_DIR, { recursive: true });
 
 const SIZES = [72, 96, 128, 144, 152, 192, 384, 512];
 
-// Regular icons
+// Regular icons — white background to match the bird logo
 for (const size of SIZES) {
   await sharp(INPUT)
-    .resize(size, size, { fit: "contain", background: { r: 12, g: 31, b: 23, alpha: 1 } })
+    .resize(size, size, { fit: "contain", background: { r: 255, g: 255, b: 255, alpha: 1 } })
+    .flatten({ background: { r: 255, g: 255, b: 255 } })
     .png()
     .toFile(join(OUT_DIR, `icon-${size}x${size}.png`));
   console.log(`✅ icon-${size}x${size}.png`);
 }
 
-// Maskable icons (extra padding — safe area 80% of canvas)
+// Maskable icons — white background with safe-area padding
 for (const size of [192, 512]) {
-  const innerSize = Math.round(size * 0.72);
+  const innerSize = Math.round(size * 0.8);
   const padding = Math.round((size - innerSize) / 2);
   await sharp(INPUT)
-    .resize(innerSize, innerSize, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    .resize(innerSize, innerSize, { fit: "contain", background: { r: 255, g: 255, b: 255, alpha: 1 } })
+    .flatten({ background: { r: 255, g: 255, b: 255 } })
     .extend({
       top: padding,
       bottom: padding,
       left: padding,
       right: padding,
-      background: { r: 12, g: 31, b: 23, alpha: 1 },
+      background: { r: 255, g: 255, b: 255 },
     })
     .resize(size, size)
     .png()
