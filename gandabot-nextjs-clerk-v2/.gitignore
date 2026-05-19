@@ -1,0 +1,63 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Production build
+build/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# PWA generated files
+public/sw.js
+public/sw.js.map
+public/workbox-*.js
+public/workbox-*.js.map
+
+# App icons (generated — run npm run icons)
+public/icons/icon-72x72.png
+public/icons/icon-96x96.png
+public/icons/icon-128x128.png
+public/icons/icon-144x144.png
+public/icons/icon-152x152.png
+public/icons/icon-192x192.png
+public/icons/icon-384x384.png
+public/icons/icon-512x512.png
+public/icons/icon-maskable-192x192.png
+public/icons/icon-maskable-512x512.png
+
+# Capacitor native platforms (generated — run: npx cap add ios/android)
+ios/
+android/
+
+# TWA Android project (generated — run: npm run twa:init)
+android-twa/
+
+# Signing keystores — NEVER commit these!
+*.keystore
+*.jks
+*.p12
+*.mobileprovision
+*.cer
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini

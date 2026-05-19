@@ -1,15 +1,37 @@
 {
   "name": "gandabot",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+
+    "icons": "node scripts/generate-icons.mjs",
+
+    "cap:sync": "npx cap sync",
+    "cap:open:ios": "npx cap open ios",
+    "cap:open:android": "npx cap open android",
+    "cap:run:ios": "npx cap run ios",
+    "cap:run:android": "npx cap run android",
+    "cap:build:android": "npx cap build android",
+    "cap:build:ios": "npx cap build ios",
+
+    "twa:init": "npx @bubblewrap/cli init --manifest=https://www.gandabot.com/manifest.json --directory=android-twa",
+    "twa:build": "npx @bubblewrap/cli build --skipPwaValidation",
+    "twa:update": "npx @bubblewrap/cli update --skipPwaValidation",
+
+    "store:android": "npm run build && npm run twa:build",
+    "store:ios": "npm run build && npm run cap:build:ios"
   },
   "dependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/cli": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/ios": "^7.0.0",
     "@clerk/nextjs": "^6.12.12",
+    "@ducanh2912/next-pwa": "^10.2.9",
     "next": "^15.2.4",
     "pg": "^8.13.3",
     "react": "^19.0.0",
@@ -22,6 +44,7 @@
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.5.3",
+    "sharp": "^0.33.5",
     "tailwindcss": "^3.4.17",
     "typescript": "^5"
   }
