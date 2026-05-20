@@ -172,59 +172,6 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* Uganda Photo Showcase */}
-      <section className="px-6 py-20 max-w-6xl mx-auto">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-black mb-4" style={{ fontFamily: "Fraunces, serif", color: "var(--cream)" }}>
-            Discover the Pearl of Africa
-          </h2>
-          <p className="opacity-60 max-w-xl mx-auto text-sm" style={{ color: "var(--cream)" }}>
-            Uganda — home to rare mountain gorillas, the source of the Nile, and over 56 vibrant languages.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Giraffe — Kidepo Valley */}
-          <div className="relative rounded-2xl overflow-hidden h-64 group cursor-pointer">
-            <img
-              src="https://images.unsplash.com/photo-1547970810-dc1eac37d174?w=600&q=80&auto=format&fit=crop"
-              alt="Rothschild's giraffe in Uganda"
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-            <div className="absolute bottom-4 left-4">
-              <p className="text-xs font-semibold opacity-70" style={{ color: "var(--teal-light)" }}>KIDEPO VALLEY</p>
-              <p className="text-base font-bold" style={{ color: "var(--cream)" }}>Rothschild&apos;s Giraffe</p>
-            </div>
-          </div>
-          {/* Bwindi Gorilla Forest */}
-          <div className="relative rounded-2xl overflow-hidden h-64 group cursor-pointer">
-            <img
-              src="https://images.unsplash.com/photo-1576502200916-3808e07386a5?w=600&q=80&auto=format&fit=crop"
-              alt="Bwindi Impenetrable Forest Uganda"
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-            <div className="absolute bottom-4 left-4">
-              <p className="text-xs font-semibold opacity-70" style={{ color: "var(--teal-light)" }}>BWINDI</p>
-              <p className="text-base font-bold" style={{ color: "var(--cream)" }}>Impenetrable Forest</p>
-            </div>
-          </div>
-          {/* Source of the Nile / Lake Victoria */}
-          <div className="relative rounded-2xl overflow-hidden h-64 group cursor-pointer">
-            <img
-              src="https://images.unsplash.com/photo-1612690723534-6f4a3d46d7d7?w=600&q=80&auto=format&fit=crop"
-              alt="Source of the Nile, Jinja Uganda"
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-            <div className="absolute bottom-4 left-4">
-              <p className="text-xs font-semibold opacity-70" style={{ color: "var(--teal-light)" }}>JINJA</p>
-              <p className="text-base font-bold" style={{ color: "var(--cream)" }}>Source of the Nile</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Stats */}
       <section className="px-6 py-16 border-y border-white/10" style={{ background: "rgba(33,144,121,0.06)" }}>
         <div className="max-w-4xl mx-auto grid grid-cols-3 gap-8 text-center">
