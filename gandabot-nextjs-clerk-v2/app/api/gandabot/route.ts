@@ -32,13 +32,15 @@ const FALLBACK_RESPONSES = [
 ];
 
 export async function POST(req: NextRequest) {
-  const { messages } = await req.json();
+  const { messages, language = "Luganda" } = await req.json();
+
+  const systemPrompt = `${SYSTEM_PROMPT}\n\nThe user is currently learning: ${language}. Focus your responses and examples on ${language} language and related culture.`;
 
   // 1. Try Sunbird Sunflower LLM
   if (process.env.SUNBIRD_API_KEY) {
     try {
       const reply = await sunbirdChat(
-        [{ role: "system", content: SYSTEM_PROMPT }, ...messages],
+        [{ role: "system", content: systemPrompt }, ...messages],
         { temperature: 0.7, max_tokens: 500 }
       );
       if (reply) return NextResponse.json({ reply });
@@ -58,7 +60,7 @@ export async function POST(req: NextRequest) {
         },
         body: JSON.stringify({
           model: "gpt-4o-mini",
-          messages: [{ role: "system", content: SYSTEM_PROMPT }, ...messages],
+          messages: [{ role: "system", content: systemPrompt }, ...messages],
           temperature: 0.7,
           max_tokens: 500,
         }),
