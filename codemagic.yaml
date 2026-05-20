@@ -45,8 +45,18 @@ workflows:
             echo "  No stale certs found."
           fi
 
-          # ── Create fresh cert (private key generated on THIS Mac) + profile ──
-          echo "=== Fetching/creating signing files ==="
+          # ── Step 1: Explicitly create the cert so the private key is generated
+          # on THIS Mac and saved to keychain BEFORE fetch-signing-files runs.
+          # Using fetch-signing-files --create alone fails with
+          # "Cannot save Signing Certificates without certificate private key"
+          # because it finds/downloads a cert without the matching private key.
+          echo "=== Creating new IOS_DISTRIBUTION certificate ==="
+          app-store-connect certificates create \
+            --type IOS_DISTRIBUTION \
+            --save
+
+          # ── Step 2: Get / create the provisioning profile using the cert above ──
+          echo "=== Fetching/creating provisioning profile ==="
           app-store-connect fetch-signing-files \
             com.gandabot.app \
             --type IOS_APP_STORE \
