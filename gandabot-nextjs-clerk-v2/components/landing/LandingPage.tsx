@@ -1,284 +1,378 @@
 "use client";
 
-import { useState } from "react";
-import { SignInButton, SignUpButton, useUser } from "@clerk/nextjs";
-import Link from "next/link";
+import { useState, useEffect, useRef } from "react";
+import { useUser } from "@clerk/nextjs";
+import {
+  MessageSquare, Globe, BookOpen, Volume2, Users, Headphones,
+  ArrowRight, ArrowDown, ChevronRight,
+} from "lucide-react";
 
-const FEATURES = [
-  {
-    icon: "💬",
-    title: "AI Chat Tutor",
-    desc: "Conversational practice with GandaBot — your expert Luganda companion available 24/7.",
-    href: "/app/chat",
-  },
-  {
-    icon: "🎙️",
-    title: "Pronunciation Coach",
-    desc: "Get instant scored feedback on your Luganda pronunciation with actionable tips.",
-    href: "/app/tutor",
-  },
-  {
-    icon: "🌍",
-    title: "Country Explorer",
-    desc: "Discover Uganda and East Africa — culture, language, currency, and local phrases.",
-    href: "/app/explorer",
-  },
-  {
-    icon: "🎧",
-    title: "Podcast Hub",
-    desc: "AI-generated audio lessons on Luganda topics, narrated in natural speech.",
-    href: "/app/podcasts",
-  },
-  {
-    icon: "🗣️",
-    title: "Voice Assistant",
-    desc: "Real-time translation and cultural context for any English or Luganda phrase.",
-    href: "/app/voice",
-  },
-  {
-    icon: "👥",
-    title: "Community Forum",
-    desc: "Connect with fellow learners, share tips, and get AI-assisted replies.",
-    href: "/app/community",
-  },
+/* ─────────────────── data ─────────────────── */
+const SLIDES = [
+  { url: "https://images.unsplash.com/photo-1523805009345-7448845a9e53?auto=format&fit=crop&w=1600&q=80", label: "Buganda Kingdom" },
+  { url: "https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?auto=format&fit=crop&w=1600&q=80", label: "East Africa" },
+  { url: "https://images.unsplash.com/photo-1488161628813-04466f872be2?auto=format&fit=crop&w=1600&q=80", label: "Ugandan Culture" },
 ];
 
-const PHRASES = [
+const TICKER = [
   "Oli otya? — How are you?",
   "Webale nyo — Thank you very much",
   "Wasuze otya? — Good morning",
+  "Mpozzi okumanya — Nice to meet you",
+  "Mukama akuume — God bless you",
+  "Oyogera Luganda? — Do you speak Luganda?",
   "Nsanyuse nnyo — I am very happy",
-  "Mpulira — I understand",
-  "Erinnya lyange — My name is",
-  "Ndi mwangu — I am fine",
-  "Tugende — Let's go",
+  "Mmwe muli balungi — You are beautiful people",
 ];
 
-export function LandingPage() {
-  const { isSignedIn } = useUser();
-  const [email, setEmail] = useState("");
-  const [subStatus, setSubStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+const STATS = [
+  { n: "50K+", label: "Active Learners", color: "#219079" },
+  { n: "15",   label: "Languages Supported", color: "#F47B20" },
+  { n: "98%",  label: "Accuracy Rate", color: "#7056E4" },
+  { n: "24/7", label: "AI Assistance", color: "#2EB898" },
+];
 
-  async function handleSubscribe(e: React.FormEvent) {
-    e.preventDefault();
-    setSubStatus("loading");
-    try {
-      const res = await fetch("/api/newsletter/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-      setSubStatus(res.ok ? "done" : "error");
-    } catch {
-      setSubStatus("error");
-    }
-  }
+const FEATURES = [
+  { icon: MessageSquare, title: "AI Chat Assistant", desc: "Bilingual AI that teaches Luganda with cultural context, pronunciation guides, and real conversation practice.", color: "#219079" },
+  { icon: Globe, title: "Country Explorer", desc: "Discover Uganda and African countries with AI-generated insights, landmarks, maps, and cultural deep-dives.", color: "#F47B20" },
+  { icon: BookOpen, title: "Pronunciation Tutor", desc: "Perfect your Luganda pronunciation with AI-powered feedback, phonetic guides, and personalized drills.", color: "#7056E4" },
+  { icon: Volume2, title: "Voice Assistant", desc: "Practice live conversations and get real-time voice translations for travel and daily interactions.", color: "#E53E3E" },
+  { icon: Users, title: "Community Forum", desc: "Connect with fellow learners, share progress, and get AI-powered discussion summaries and reply suggestions.", color: "#38B2AC" },
+  { icon: Headphones, title: "Podcast Hub", desc: "Generate and stream AI-crafted multilingual podcasts tailored to your level and learning interests.", color: "#805AD5" },
+];
+
+/* ─────────────────── components ─────────────────── */
+
+function Header() {
+  const { isSignedIn, user } = useUser();
+  const [scrolled, setScrolled] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const fn = () => setScrolled(window.scrollY > 10);
+    window.addEventListener("scroll", fn);
+    return () => window.removeEventListener("scroll", fn);
+  }, []);
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--forest)" }}>
-      {/* Nav */}
-      <nav className="flex items-center justify-between px-6 py-4 border-b border-white/10 sticky top-0 z-50 backdrop-blur-sm" style={{ background: "rgba(12,31,23,0.9)" }}>
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold gb-spin" style={{ background: "var(--teal)", color: "var(--forest)" }}>G</div>
-          <span className="font-bold text-lg tracking-tight" style={{ fontFamily: "Fraunces, serif", color: "var(--cream)" }}>GandaBot</span>
-        </div>
+    <header
+      className="fixed top-0 inset-x-0 z-50 transition-all duration-300"
+      style={{
+        background: scrolled ? "rgba(12,31,23,0.95)" : "rgba(12,31,23,0.6)",
+        backdropFilter: "blur(16px)",
+        borderBottom: scrolled ? "1px solid rgba(33,144,121,0.2)" : "1px solid transparent",
+      }}
+    >
+      <div className="max-w-7xl mx-auto px-6 md:px-14 py-4 flex items-center justify-between">
+        <a href="/" className="flex items-center gap-2.5">
+          <img src="https://ucarecdn.com/9f5357b3-3056-4d90-a10b-a2f98fde56b6/-/format/auto/" alt="GandaBot" width={32} height={32} className="rounded-lg" />
+          <span style={{ fontFamily: "Fraunces,Georgia,serif", fontWeight: 700, color: "var(--cream)" }}>GandaBot</span>
+        </a>
+
+        <nav className="hidden md:flex items-center gap-8">
+          {[["Blog", "/blog"], ["FAQ", "/faq"]].map(([label, href]) => (
+            <a key={href} href={href} className="text-sm transition-colors hover:text-white" style={{ color: "rgba(245,237,216,0.55)" }}>{label}</a>
+          ))}
+        </nav>
+
         <div className="flex items-center gap-3">
           {isSignedIn ? (
-            <Link href="/app/chat" className="gb-btn gb-btn-primary px-4 py-2 rounded-lg text-sm font-medium" style={{ background: "var(--teal)", color: "var(--forest)" }}>
+            <a href="/app" className="gb-btn gb-btn-primary px-5 py-2.5 rounded-full font-semibold text-sm" style={{ background: "#219079", color: "#fff" }}>
               Open App
-            </Link>
+            </a>
           ) : (
             <>
-              <SignInButton mode="modal">
-                <button className="gb-btn px-4 py-2 rounded-lg text-sm font-medium border border-white/20" style={{ color: "var(--cream)" }}>Sign In</button>
-              </SignInButton>
-              <SignUpButton mode="modal">
-                <button className="gb-btn gb-btn-primary px-4 py-2 rounded-lg text-sm font-medium" style={{ background: "var(--teal)", color: "var(--forest)" }}>Get Started</button>
-              </SignUpButton>
+              <a href="/sign-in" className="hidden sm:block text-sm hover:text-white transition-colors" style={{ color: "rgba(245,237,216,0.55)" }}>Sign In</a>
+              <a href="/sign-up" className="gb-btn gb-btn-primary px-5 py-2.5 rounded-full font-semibold text-sm" style={{ background: "#219079", color: "#fff" }}>
+                Get Started
+              </a>
             </>
           )}
+          <button className="md:hidden p-2" onClick={() => setOpen(o => !o)} style={{ color: "rgba(245,237,216,0.7)" }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              {open ? <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></> : <><line x1="4" y1="8" x2="20" y2="8"/><line x1="4" y1="16" x2="20" y2="16"/></>}
+            </svg>
+          </button>
         </div>
-      </nav>
+      </div>
+      {open && (
+        <div className="md:hidden px-6 pb-5 flex flex-col gap-3 border-t" style={{ borderColor: "rgba(33,144,121,0.12)", background: "rgba(12,31,23,0.98)" }}>
+          <a href="/blog" className="py-2 text-sm" style={{ color: "rgba(245,237,216,0.65)" }}>Blog</a>
+          <a href="/faq"  className="py-2 text-sm" style={{ color: "rgba(245,237,216,0.65)" }}>FAQ</a>
+          {!isSignedIn && <a href="/sign-in" className="py-2 text-sm" style={{ color: "rgba(245,237,216,0.65)" }}>Sign In</a>}
+        </div>
+      )}
+    </header>
+  );
+}
 
-      {/* Hero */}
-      <section className="relative overflow-hidden px-6 py-24 text-center gb-kente">
-        <div className="gb-spin absolute -top-20 -right-20 w-64 h-64 rounded-full opacity-10" style={{ background: "var(--teal)" }} />
-        <div className="gb-float absolute -bottom-10 -left-16 w-48 h-48 rounded-full opacity-10" style={{ background: "var(--orange)" }} />
-        <div className="relative z-10 max-w-3xl mx-auto">
-          <div className="gb-rise-1 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium mb-6 border" style={{ borderColor: "var(--teal)", color: "var(--teal)" }}>
-            ✦ AI-Powered Luganda Learning
+function Hero() {
+  const { isSignedIn } = useUser();
+  const [slide, setSlide] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setSlide(p => (p + 1) % SLIDES.length), 5500);
+    return () => clearInterval(t);
+  }, []);
+
+  return (
+    <section className="relative min-h-screen flex flex-col overflow-hidden" style={{ background: "var(--forest)" }}>
+      {/* Slides */}
+      <div className="absolute inset-0">
+        {SLIDES.map((s, i) => (
+          <div key={i} className="absolute inset-0 transition-opacity duration-1000" style={{ opacity: i === slide ? 1 : 0 }}>
+            <img src={s.url} alt={s.label} className="w-full h-full object-cover" loading={i === 0 ? "eager" : "lazy"} />
+            <div className="absolute inset-0" style={{ background: "linear-gradient(135deg,rgba(12,31,23,0.94) 0%,rgba(12,31,23,0.7) 55%,rgba(12,31,23,0.9) 100%)" }} />
           </div>
-          <h1 className="gb-rise-2 text-5xl md:text-7xl font-black mb-6 leading-tight" style={{ fontFamily: "Fraunces, serif" }}>
-            <span style={{ color: "var(--cream)" }}>Learn </span>
-            <span className="gb-shimmer-text">Luganda</span>
-            <br />
-            <span style={{ color: "var(--cream)" }}>with AI</span>
-          </h1>
-          <p className="gb-rise-3 text-lg mb-10 max-w-xl mx-auto opacity-80" style={{ color: "var(--cream)" }}>
-            Master Luganda and explore Ugandan culture through AI-powered conversation, pronunciation coaching, podcasts, and community learning.
+        ))}
+      </div>
+      <div className="absolute inset-0 gb-kente opacity-50 pointer-events-none" />
+      {/* Accent left */}
+      <div className="absolute left-0 top-0 bottom-0 w-1" style={{ background: "linear-gradient(to bottom,#219079,#F47B20,transparent)" }} />
+      {/* Orbit decoration */}
+      <div className="absolute gb-float pointer-events-none" style={{ top: "12%", right: "6%", width: 340, height: 340 }}>
+        <div className="w-full h-full rounded-full gb-spin" style={{ border: "1.5px dashed rgba(33,144,121,0.3)" }} />
+        <div className="absolute rounded-full" style={{ inset: 50, border: "1px solid rgba(244,123,32,0.2)" }} />
+        <div className="absolute rounded-full" style={{ inset: 100, background: "rgba(33,144,121,0.07)" }} />
+      </div>
+
+      {/* Content */}
+      <div className="relative z-10 flex-1 flex flex-col justify-center px-8 md:px-16 lg:px-24 pt-28 pb-16 max-w-7xl mx-auto w-full">
+        <div className="gb-rise-1 mb-8 inline-flex w-fit">
+          <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold tracking-widest uppercase" style={{ background: "rgba(33,144,121,0.18)", color: "#2EB898", border: "1px solid rgba(33,144,121,0.3)" }}>
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#2EB898", boxShadow: "0 0 6px #2EB898" }} />
+            AI-Powered African Language Learning
+          </span>
+        </div>
+
+        <h1 className="gb-rise-2 font-black leading-none mb-6" style={{ fontFamily: "Fraunces,Georgia,serif", fontSize: "clamp(3rem,8vw,7rem)", letterSpacing: "-0.02em" }}>
+          <span style={{ color: "var(--cream)" }}>Speak</span>{" "}
+          <span className="gb-shimmer-text">Luganda.</span>
+          <br />
+          <span style={{ color: "var(--cream)" }}>Feel</span>{" "}
+          <em style={{ fontStyle: "italic", color: "#F47B20" }}>Uganda.</em>
+        </h1>
+
+        <p className="gb-rise-3 text-lg md:text-xl max-w-lg leading-relaxed mb-10" style={{ color: "rgba(245,237,216,0.68)", fontWeight: 300 }}>
+          Immerse yourself in the richness of Luganda with your AI companion — natural conversations, cultural deep-dives, and a community of African language lovers.
+        </p>
+
+        <div className="gb-rise-4 flex flex-col sm:flex-row gap-4">
+          <a href={isSignedIn ? "/app" : "/sign-up"} className="gb-btn gb-btn-primary inline-flex items-center gap-3 px-8 py-4 rounded-full font-semibold text-base" style={{ background: "#219079", color: "#fff" }}>
+            <ArrowDown size={18} /> Start Learning Free
+          </a>
+          <a href="/sign-in" className="gb-btn inline-flex items-center gap-2 px-8 py-4 rounded-full font-medium text-base border" style={{ borderColor: "rgba(245,237,216,0.25)", color: "rgba(245,237,216,0.7)" }}>
+            Sign In <ArrowRight size={16} />
+          </a>
+        </div>
+
+        <div className="gb-rise-5 mt-10 flex items-center gap-3">
+          <div className="flex -space-x-2">
+            {["#219079","#F47B20","#7056E4","#38B2AC"].map((c, i) => (
+              <div key={i} className="w-8 h-8 rounded-full border-2" style={{ background: c, borderColor: "var(--forest)" }} />
+            ))}
+          </div>
+          <p style={{ color: "rgba(245,237,216,0.45)", fontSize: "0.82rem" }}>
+            <strong style={{ color: "rgba(245,237,216,0.85)" }}>50,000+</strong> learners across 80 countries
           </p>
-          <div className="gb-rise-4 flex flex-col sm:flex-row gap-4 justify-center">
-            {isSignedIn ? (
-              <Link href="/app/chat" className="gb-btn gb-btn-primary px-8 py-4 rounded-xl font-semibold text-base" style={{ background: "var(--teal)", color: "var(--forest)" }}>
-                Start Learning →
-              </Link>
-            ) : (
-              <>
-                <SignUpButton mode="modal">
-                  <button className="gb-btn gb-btn-primary px-8 py-4 rounded-xl font-semibold text-base" style={{ background: "var(--teal)", color: "var(--forest)" }}>
-                    Start for Free →
-                  </button>
-                </SignUpButton>
-                <SignInButton mode="modal">
-                  <button className="gb-btn px-8 py-4 rounded-xl font-semibold text-base border border-white/20" style={{ color: "var(--cream)" }}>
-                    Sign In
-                  </button>
-                </SignInButton>
-              </>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* Scrolling phrases marquee */}
-      <div className="gb-marquee-wrap overflow-hidden border-y border-white/10 py-3" style={{ background: "rgba(33,144,121,0.08)" }}>
-        <div className="gb-marquee-inner flex gap-12 whitespace-nowrap" style={{ width: "max-content" }}>
-          {[...PHRASES, ...PHRASES].map((p, i) => (
-            <span key={i} className="text-sm font-medium" style={{ color: "var(--teal-light)" }}>
-              {p}
-            </span>
-          ))}
         </div>
       </div>
 
-      {/* Features */}
-      <section className="px-6 py-24 max-w-6xl mx-auto">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-black mb-4" style={{ fontFamily: "Fraunces, serif", color: "var(--cream)" }}>
-            Everything you need to learn Luganda
-          </h2>
-          <p className="opacity-60 max-w-xl mx-auto" style={{ color: "var(--cream)" }}>
-            Six powerful modules designed around how language learning actually works.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {FEATURES.map((f, i) => (
-            <div key={f.title} className={`gb-feature-card rounded-2xl p-6 border border-white/10 gb-rise-${Math.min(i + 1, 5)}`} style={{ background: "rgba(255,255,255,0.04)" }}>
-              <div className="text-3xl mb-4">{f.icon}</div>
-              <h3 className="font-bold text-lg mb-2" style={{ color: "var(--cream)" }}>{f.title}</h3>
-              <p className="text-sm opacity-60 leading-relaxed" style={{ color: "var(--cream)" }}>{f.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* Slide dots */}
+      <div className="relative z-10 flex justify-center gap-2 pb-6">
+        {SLIDES.map((_, i) => (
+          <button key={i} onClick={() => setSlide(i)} className="rounded-full transition-all duration-300" style={{ width: i === slide ? 28 : 8, height: 8, background: i === slide ? "#219079" : "rgba(245,237,216,0.3)" }} />
+        ))}
+      </div>
 
-      {/* Uganda Photo Showcase */}
-      <section className="px-6 py-20 max-w-6xl mx-auto">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-black mb-4" style={{ fontFamily: "Fraunces, serif", color: "var(--cream)" }}>
-            Discover the Pearl of Africa
-          </h2>
-          <p className="opacity-60 max-w-xl mx-auto text-sm" style={{ color: "var(--cream)" }}>
-            Uganda — home to rare mountain gorillas, the source of the Nile, and over 56 vibrant languages.
-          </p>
+      {/* Partnership bar */}
+      <div className="relative z-10 mx-6 md:mx-16 mb-8 rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-4" style={{ background: "rgba(245,237,216,0.05)", border: "1px solid rgba(245,237,216,0.1)", backdropFilter: "blur(12px)" }}>
+        <div>
+          <p className="font-semibold" style={{ color: "var(--cream)" }}>Educational Institution?</p>
+          <p style={{ color: "rgba(245,237,216,0.5)", fontSize: "0.875rem" }}>Integrate GandaBot into your curriculum — dashboards, analytics & bulk enrolment.</p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Giraffe — Kidepo Valley */}
-          <div className="relative rounded-2xl overflow-hidden h-64 group cursor-pointer">
-            <img
-              src="https://images.unsplash.com/photo-1547970810-dc1eac37d174?w=600&q=80&auto=format&fit=crop"
-              alt="Rothschild's giraffe in Uganda"
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-            <div className="absolute bottom-4 left-4">
-              <p className="text-xs font-semibold opacity-70" style={{ color: "var(--teal-light)" }}>KIDEPO VALLEY</p>
-              <p className="text-base font-bold" style={{ color: "var(--cream)" }}>Rothschild&apos;s Giraffe</p>
-            </div>
-          </div>
-          {/* Bwindi Gorilla Forest */}
-          <div className="relative rounded-2xl overflow-hidden h-64 group cursor-pointer">
-            <img
-              src="https://images.unsplash.com/photo-1576502200916-3808e07386a5?w=600&q=80&auto=format&fit=crop"
-              alt="Bwindi Impenetrable Forest Uganda"
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-            <div className="absolute bottom-4 left-4">
-              <p className="text-xs font-semibold opacity-70" style={{ color: "var(--teal-light)" }}>BWINDI</p>
-              <p className="text-base font-bold" style={{ color: "var(--cream)" }}>Impenetrable Forest</p>
-            </div>
-          </div>
-          {/* Source of the Nile / Lake Victoria */}
-          <div className="relative rounded-2xl overflow-hidden h-64 group cursor-pointer">
-            <img
-              src="https://images.unsplash.com/photo-1612690723534-6f4a3d46d7d7?w=600&q=80&auto=format&fit=crop"
-              alt="Source of the Nile, Jinja Uganda"
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-            <div className="absolute bottom-4 left-4">
-              <p className="text-xs font-semibold opacity-70" style={{ color: "var(--teal-light)" }}>JINJA</p>
-              <p className="text-base font-bold" style={{ color: "var(--cream)" }}>Source of the Nile</p>
-            </div>
-          </div>
-        </div>
-      </section>
+        <a href="#partnership" className="whitespace-nowrap px-6 py-3 rounded-full font-semibold text-sm" style={{ background: "rgba(33,144,121,0.2)", color: "#2EB898", border: "1px solid rgba(33,144,121,0.35)" }}>
+          Apply for Partnership →
+        </a>
+      </div>
+    </section>
+  );
+}
 
-      {/* Stats */}
-      <section className="px-6 py-16 border-y border-white/10" style={{ background: "rgba(33,144,121,0.06)" }}>
-        <div className="max-w-4xl mx-auto grid grid-cols-3 gap-8 text-center">
-          {[["6", "Learning Modules"], ["AI-Powered", "All Features"], ["Uganda", "Focused"]].map(([val, label]) => (
-            <div key={label}>
-              <div className="text-4xl font-black mb-1" style={{ fontFamily: "Fraunces, serif", color: "var(--teal-light)" }}>{val}</div>
-              <div className="text-sm opacity-60" style={{ color: "var(--cream)" }}>{label}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Newsletter */}
-      <section className="px-6 py-24 max-w-xl mx-auto text-center">
-        <h2 className="text-3xl font-black mb-3" style={{ fontFamily: "Fraunces, serif", color: "var(--cream)" }}>Stay in the loop</h2>
-        <p className="opacity-60 mb-8 text-sm" style={{ color: "var(--cream)" }}>Weekly Luganda phrases, cultural insights, and platform updates.</p>
-        {subStatus === "done" ? (
-          <div className="py-4 px-6 rounded-xl text-sm font-medium" style={{ background: "rgba(33,144,121,0.2)", color: "var(--teal-light)" }}>
-            Mwandiikibirwa! You're subscribed ✓
-          </div>
-        ) : (
-          <form onSubmit={handleSubscribe} className="flex gap-3">
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="your@email.com"
-              className="flex-1 px-4 py-3 rounded-xl border border-white/20 bg-white/5 text-sm outline-none focus:border-teal-500"
-              style={{ color: "var(--cream)" }}
-            />
-            <button
-              type="submit"
-              disabled={subStatus === "loading"}
-              className="gb-btn gb-btn-primary px-6 py-3 rounded-xl text-sm font-semibold"
-              style={{ background: "var(--teal)", color: "var(--forest)" }}
-            >
-              {subStatus === "loading" ? "..." : "Subscribe"}
-            </button>
-          </form>
-        )}
-        {subStatus === "error" && <p className="text-xs mt-2 opacity-60" style={{ color: "var(--orange)" }}>Something went wrong. Please try again.</p>}
-      </section>
-
-      {/* Footer */}
-      <footer className="border-t border-white/10 px-6 py-8 text-center">
-        <div className="flex items-center justify-center gap-2 mb-3">
-          <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: "var(--teal)", color: "var(--forest)" }}>G</div>
-          <span className="font-bold" style={{ fontFamily: "Fraunces, serif", color: "var(--cream)" }}>GandaBot</span>
-        </div>
-        <p className="text-xs opacity-40" style={{ color: "var(--cream)" }}>
-          AI-powered Luganda learning. Built with ❤️ for Uganda and the world.
-        </p>
-      </footer>
+function Ticker() {
+  return (
+    <div className="gb-marquee-wrap overflow-hidden py-3 border-y" style={{ background: "#219079", borderColor: "#1a7261" }}>
+      <div className="gb-marquee-inner flex gap-12 whitespace-nowrap">
+        {[...TICKER, ...TICKER].map((item, i) => (
+          <span key={i} className="inline-flex items-center gap-3 text-sm font-medium" style={{ color: "var(--cream)" }}>
+            <span className="text-xs opacity-60">✦</span>{item}
+          </span>
+        ))}
+      </div>
     </div>
+  );
+}
+
+function Stats() {
+  const ref = useRef<HTMLElement>(null);
+  const [vis, setVis] = useState(false);
+  useEffect(() => {
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setVis(true); }, { threshold: 0.2 });
+    if (ref.current) obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, []);
+
+  return (
+    <section ref={ref} className="py-24" style={{ background: "linear-gradient(135deg,#0C1F17,#0f2b1e)" }}>
+      <div className="max-w-6xl mx-auto px-8 md:px-16">
+        <p className="text-center mb-16 italic font-light" style={{ fontFamily: "Fraunces,Georgia,serif", color: "rgba(245,237,216,0.35)", letterSpacing: "0.06em" }}>
+          — Trusted by learners worldwide —
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+          {STATS.map((s, i) => (
+            <div key={i} className="text-center" style={{ opacity: vis ? 1 : 0, transform: vis ? "none" : "translateY(20px)", transition: `opacity .6s ease ${i*.12}s, transform .6s ease ${i*.12}s` }}>
+              <div style={{ fontFamily: "Fraunces,Georgia,serif", fontSize: "clamp(2.5rem,5vw,4rem)", fontWeight: 900, color: s.color, letterSpacing: "-0.02em" }}>{s.n}</div>
+              <div style={{ color: "rgba(245,237,216,0.45)", fontSize: "0.875rem", fontWeight: 300 }}>{s.label}</div>
+              <div className="mx-auto mt-4 h-px" style={{ width: 40, background: `linear-gradient(90deg,transparent,${s.color},transparent)` }} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Features() {
+  const ref = useRef<HTMLElement>(null);
+  const [vis, setVis] = useState(false);
+  useEffect(() => {
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setVis(true); }, { threshold: 0.1 });
+    if (ref.current) obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, []);
+
+  return (
+    <section ref={ref} className="py-28 gb-kente" style={{ background: "var(--cream)" }}>
+      <div className="max-w-7xl mx-auto px-8 md:px-16">
+        <div className="mb-20">
+          <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold tracking-widest uppercase mb-6" style={{ background: "rgba(33,144,121,0.12)", color: "#219079" }}>
+            Everything you need
+          </span>
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <h2 className="font-black leading-none" style={{ fontFamily: "Fraunces,Georgia,serif", fontSize: "clamp(2.5rem,5.5vw,5rem)", color: "var(--forest)", letterSpacing: "-0.025em", maxWidth: "14ch" }}>
+              Your full African<br /><em style={{ fontStyle: "normal", color: "#219079" }}>learning suite.</em>
+            </h2>
+            <p className="max-w-xs leading-relaxed" style={{ color: "rgba(12,31,23,0.5)", fontWeight: 300 }}>
+              Six powerful tools built for the way you actually learn — through conversation, culture, and community.
+            </p>
+          </div>
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {FEATURES.map((f, i) => {
+            const Icon = f.icon;
+            return (
+              <a key={i} href="/app" className="gb-feature-card text-left rounded-3xl p-8 block group" style={{ background: "#fff", border: "1px solid rgba(12,31,23,0.07)", opacity: vis ? 1 : 0, transform: vis ? "none" : "translateY(24px)", transition: `opacity .55s ease ${i*.07}s, transform .55s ease ${i*.07}s` }}>
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-6" style={{ background: `${f.color}18` }}>
+                  <Icon size={22} style={{ color: f.color }} />
+                </div>
+                <h3 className="font-bold mb-3 leading-tight" style={{ fontFamily: "Fraunces,Georgia,serif", fontSize: "1.25rem", color: "var(--forest)" }}>{f.title}</h3>
+                <p className="leading-relaxed mb-6" style={{ color: "rgba(12,31,23,0.5)", fontSize: "0.9rem", fontWeight: 300 }}>{f.desc}</p>
+                <span className="inline-flex items-center gap-1.5 text-sm font-semibold group-hover:gap-3 transition-all" style={{ color: f.color }}>
+                  Explore <ChevronRight size={14} />
+                </span>
+                <div className="mt-5 h-0.5 w-8 group-hover:w-full rounded-full transition-all duration-500" style={{ background: f.color }} />
+              </a>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CTA() {
+  const { isSignedIn } = useUser();
+  return (
+    <section className="py-32 relative overflow-hidden" style={{ background: "linear-gradient(135deg,var(--forest),#153526)" }}>
+      <div className="absolute gb-float pointer-events-none" style={{ top: "-80px", left: "-80px", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle,rgba(33,144,121,0.18) 0%,transparent 70%)" }} />
+      <div className="absolute pointer-events-none" style={{ bottom: "-60px", right: "-60px", width: 350, height: 350, borderRadius: "50%", background: "radial-gradient(circle,rgba(244,123,32,0.12) 0%,transparent 70%)" }} />
+      <div className="absolute inset-0 gb-kente opacity-40 pointer-events-none" />
+      <div className="relative z-10 max-w-4xl mx-auto px-8 md:px-16 text-center">
+        <p className="italic font-light mb-6" style={{ fontFamily: "Fraunces,Georgia,serif", color: "rgba(245,237,216,0.4)", letterSpacing: "0.06em" }}>— Begin your journey —</p>
+        <h2 className="font-black leading-none mb-8" style={{ fontFamily: "Fraunces,Georgia,serif", fontSize: "clamp(2.8rem,6.5vw,5.5rem)", color: "var(--cream)", letterSpacing: "-0.025em" }}>
+          Luganda is waiting<br /><span style={{ color: "#219079" }}>for you.</span>
+        </h2>
+        <p className="max-w-xl mx-auto mb-12 leading-relaxed" style={{ color: "rgba(245,237,216,0.5)", fontSize: "1.1rem", fontWeight: 300 }}>
+          Join over 50,000 learners discovering the beauty of East African language and culture.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <a href={isSignedIn ? "/app" : "/sign-up"} className="gb-btn gb-btn-primary px-10 py-4 rounded-full font-semibold text-base" style={{ background: "#219079", color: "#fff" }}>
+            {isSignedIn ? "Go to App" : "Create Free Account"}
+          </a>
+          {!isSignedIn && (
+            <a href="/sign-in" className="gb-btn px-10 py-4 rounded-full font-medium text-base border" style={{ borderColor: "rgba(245,237,216,0.2)", color: "rgba(245,237,216,0.6)" }}>
+              Sign In
+            </a>
+          )}
+        </div>
+        <p className="mt-6 text-xs" style={{ color: "rgba(245,237,216,0.25)" }}>No credit card required · Free forever for personal use</p>
+      </div>
+    </section>
+  );
+}
+
+function Footer() {
+  const LINKS = {
+    Product: [{ l: "Features", h: "/#features" }, { l: "Blog", h: "/blog" }, { l: "FAQ", h: "/faq" }],
+    Community: [{ l: "Forum", h: "/app" }, { l: "Podcast Hub", h: "/app" }, { l: "Partnerships", h: "/#partnership" }],
+    Legal: [{ l: "Privacy", h: "/faq" }, { l: "Terms", h: "/faq" }],
+  };
+  return (
+    <footer className="pt-20 pb-10" style={{ background: "#0a1a12", borderTop: "1px solid rgba(33,144,121,0.15)" }}>
+      <div className="max-w-7xl mx-auto px-8 md:px-16">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-12 mb-16">
+          <div className="col-span-2 md:col-span-1">
+            <a href="/" className="inline-flex items-center gap-3 mb-5">
+              <img src="https://ucarecdn.com/9f5357b3-3056-4d90-a10b-a2f98fde56b6/-/format/auto/" alt="" width={36} height={36} className="rounded-xl" />
+              <span style={{ fontFamily: "Fraunces,Georgia,serif", fontWeight: 700, fontSize: "1.1rem", color: "var(--cream)" }}>GandaBot</span>
+            </a>
+            <p style={{ color: "rgba(245,237,216,0.38)", fontSize: "0.875rem", lineHeight: 1.8, maxWidth: "22ch" }}>
+              AI-powered Luganda learning for the next generation of African language lovers.
+            </p>
+          </div>
+          {Object.entries(LINKS).map(([g, items]) => (
+            <div key={g}>
+              <p className="text-xs font-semibold tracking-widest uppercase mb-5" style={{ color: "rgba(245,237,216,0.3)" }}>{g}</p>
+              <ul className="space-y-3">
+                {items.map(({ l, h }) => (
+                  <li key={l}><a href={h} className="text-sm hover:text-white transition-colors" style={{ color: "rgba(245,237,216,0.5)" }}>{l}</a></li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+        <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-4" style={{ borderTop: "1px solid rgba(245,237,216,0.07)" }}>
+          <p style={{ color: "rgba(245,237,216,0.22)", fontSize: "0.8rem" }}>© {new Date().getFullYear()} GandaBot. Webale nyo for learning with us.</p>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs" style={{ background: "rgba(33,144,121,0.12)", color: "#2EB898" }}>
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#2EB898", boxShadow: "0 0 4px #2EB898" }} />
+            All systems operational
+          </span>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+/* ─────────────────── main export ─────────────────── */
+export function LandingPage() {
+  return (
+    <>
+      <Header />
+      <Hero />
+      <Ticker />
+      <Stats />
+      <Features />
+      <CTA />
+      <Footer />
+    </>
   );
 }
