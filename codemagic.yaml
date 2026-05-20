@@ -45,18 +45,15 @@ workflows:
             echo "  No stale certs found."
           fi
 
-          # ── Step 1: Explicitly create the cert so the private key is generated
-          # on THIS Mac and saved to keychain BEFORE fetch-signing-files runs.
-          # Using fetch-signing-files --create alone fails with
-          # "Cannot save Signing Certificates without certificate private key"
-          # because it finds/downloads a cert without the matching private key.
-          echo "=== Creating new IOS_DISTRIBUTION certificate ==="
-          app-store-connect certificates create \
-            --type IOS_DISTRIBUTION \
-            --save
+          # ── The Codemagic CLI will NOT auto-generate a private key.
+          # fetch-signing-files --create reads CERTIFICATE_PRIVATE_KEY env var
+          # when creating a new distribution cert.  Generate one fresh with
+          # openssl so the key exists on THIS ephemeral Mac.
+          echo "=== Generating fresh certificate private key ==="
+          export CERTIFICATE_PRIVATE_KEY=$(openssl genrsa 2048)
 
-          # ── Step 2: Get / create the provisioning profile using the cert above ──
-          echo "=== Fetching/creating provisioning profile ==="
+          # ── Fetch/create cert (using the key above) + provisioning profile ──
+          echo "=== Fetching/creating signing files ==="
           app-store-connect fetch-signing-files \
             com.gandabot.app \
             --type IOS_APP_STORE \
