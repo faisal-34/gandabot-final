@@ -29,8 +29,10 @@ public/workbox-*.js.map
 # App icons source (do NOT ignore generated icons — they are committed)
 # public/icons/ is committed so Vercel can serve them
 
-# Capacitor native platforms (generated — run: npx cap add ios/android)
-ios/
+# Capacitor native platforms
+# ios/ is tracked because it contains custom entitlements + Info.plist changes
+ios/App/Pods/
+ios/App/App/public/
 android/
 
 # TWA Android project (generated — run: npm run twa:init)
