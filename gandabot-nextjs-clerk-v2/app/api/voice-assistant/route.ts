@@ -7,6 +7,7 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
+import { rateLimit } from "@/lib/rate-limit";
 import { sunbirdTranslate } from "@/lib/sunbird/client";
 
 async function getCulturalContext(text: string, sourceLang: string): Promise<string> {
@@ -45,7 +46,14 @@ async function getCulturalContext(text: string, sourceLang: string): Promise<str
 }
 
 export async function POST(req: NextRequest) {
-  await auth.protect();
+  const { userId } = await auth.protect();
+  const { allowed, retryAfterMs } = rateLimit(`voice:${userId}`, 20, 60_000);
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many requests" }, {
+      status: 429,
+      headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) },
+    });
+  }
 
   const { text, sourceLang = "eng", targetLang = "lug" } = await req.json();
   if (!text?.trim()) {

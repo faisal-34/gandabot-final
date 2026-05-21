@@ -1,10 +1,19 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
+import { rateLimit } from "@/lib/rate-limit";
 
 const CACHED: Record<string, Record<string, string>> = {};
 
 export async function GET(req: NextRequest) {
-  await auth.protect();
+  const { userId } = await auth.protect();
+  const { allowed, retryAfterMs } = rateLimit(`explorer:${userId}`, 20, 60_000);
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many requests" }, {
+      status: 429,
+      headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) },
+    });
+  }
+
   const country = new URL(req.url).searchParams.get("country") || "Uganda";
   if (CACHED[country]) return NextResponse.json(CACHED[country]);
 

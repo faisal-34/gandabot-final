@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
+import { rateLimit } from "@/lib/rate-limit";
 import { query } from "@/lib/db";
 
 const FALLBACKS: Record<string, string> = {
@@ -12,6 +13,13 @@ const FALLBACKS: Record<string, string> = {
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { allowed, retryAfterMs } = rateLimit(`ai-reply:${userId}`, 10, 60_000);
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many requests" }, {
+      status: 429,
+      headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) },
+    });
+  }
   const { id } = await params;
   const rows = await query("SELECT title, content, category FROM community_posts WHERE id=$1", [parseInt(id)]);
   if (!rows.length) return NextResponse.json({ error: "Post not found" }, { status: 404 });

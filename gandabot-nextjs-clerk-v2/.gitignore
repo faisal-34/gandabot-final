@@ -52,3 +52,8 @@ android-twa/
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+.vercel
+
+# TypeScript build cache
+tsconfig.tsbuildinfo

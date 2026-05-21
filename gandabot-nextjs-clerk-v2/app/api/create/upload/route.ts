@@ -1,9 +1,9 @@
 import { auth } from "@clerk/nextjs/server";
+import { put } from "@vercel/blob";
 import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-// Max 50MB for video, 10MB for audio
 const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
 const MAX_AUDIO_BYTES = 10 * 1024 * 1024;
 
@@ -26,7 +26,6 @@ export async function POST(req: NextRequest) {
 
   if (!videoFile) return NextResponse.json({ error: "No video file provided" }, { status: 400 });
 
-  // Validate video type
   if (!ALLOWED_VIDEO.includes(videoFile.type)) {
     return NextResponse.json({ error: `Unsupported video type: ${videoFile.type}` }, { status: 400 });
   }
@@ -34,9 +33,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Video file exceeds 50MB limit" }, { status: 400 });
   }
 
-  // Convert video to base64 data URL — preserves ALL tracks including audio
-  const videoBuffer = Buffer.from(await videoFile.arrayBuffer());
-  const videoUrl = `data:${videoFile.type};base64,${videoBuffer.toString("base64")}`;
+  const videoBlob = await put(`clips/${userId}/${Date.now()}-video`, videoFile, {
+    access: "public",
+    contentType: videoFile.type,
+  });
 
   let audioUrl: string | null = null;
 
@@ -47,13 +47,16 @@ export async function POST(req: NextRequest) {
     if (audioFile.size > MAX_AUDIO_BYTES) {
       return NextResponse.json({ error: "Audio file exceeds 10MB limit" }, { status: 400 });
     }
-    const audioBuffer = Buffer.from(await audioFile.arrayBuffer());
-    audioUrl = `data:${audioFile.type};base64,${audioBuffer.toString("base64")}`;
+    const audioBlob = await put(`clips/${userId}/${Date.now()}-audio`, audioFile, {
+      access: "public",
+      contentType: audioFile.type,
+    });
+    audioUrl = audioBlob.url;
   }
 
   return NextResponse.json({
     success: true,
-    videoUrl,
+    videoUrl: videoBlob.url,
     audioUrl,
     videoType: videoFile.type,
     videoSize: videoFile.size,

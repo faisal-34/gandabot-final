@@ -1,13 +1,21 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
-  await auth.protect();
+  const { userId } = await auth.protect();
+  const { allowed, retryAfterMs } = rateLimit(`tutor:${userId}`, 30, 60_000);
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many requests" }, {
+      status: 429,
+      headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) },
+    });
+  }
+
   const { text, targetWord } = await req.json();
 
   if (!process.env.OPENAI_API) {
-    const score = Math.floor(Math.random() * 30) + 65;
-    return NextResponse.json({ score, feedback: `Good attempt at "${targetWord}"! Keep practicing for more natural pronunciation.`, tips: "Focus on the tonal patterns unique to Luganda." });
+    return NextResponse.json({ error: "Pronunciation scoring unavailable" }, { status: 503 });
   }
 
   try {
@@ -27,7 +35,8 @@ export async function POST(req: NextRequest) {
     });
     const data = await res.json();
     return NextResponse.json(JSON.parse(data.choices[0]?.message?.content || "{}"));
-  } catch {
-    return NextResponse.json({ score: 70, feedback: "Good effort! Keep practicing.", tips: "Focus on the tone of each syllable." });
+  } catch (err) {
+    console.error("[pronunciation-tutor] error:", err);
+    return NextResponse.json({ error: "Scoring service unavailable" }, { status: 502 });
   }
 }

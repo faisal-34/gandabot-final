@@ -1,10 +1,19 @@
 import { auth } from "@clerk/nextjs/server";
+import { put } from "@vercel/blob";
+import { rateLimit } from "@/lib/rate-limit";
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 
 export async function POST(req: NextRequest) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { allowed, retryAfterMs } = rateLimit(`podcast-gen:${userId}`, 5, 60_000);
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many requests" }, {
+      status: 429,
+      headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) },
+    });
+  }
 
   const { topic, language = "luganda" } = await req.json();
   if (!topic) return NextResponse.json({ error: "Topic required" }, { status: 400 });
@@ -52,7 +61,11 @@ export async function POST(req: NextRequest) {
       });
       if (voiceRes.ok) {
         const buf = await voiceRes.arrayBuffer();
-        audioUrl = `data:audio/mpeg;base64,${Buffer.from(buf).toString("base64")}`;
+        const blob = await put(`podcasts/${userId}/${Date.now()}.mp3`, Buffer.from(buf), {
+          access: "public",
+          contentType: "audio/mpeg",
+        });
+        audioUrl = blob.url;
       }
     } catch { /* no audio */ }
   }

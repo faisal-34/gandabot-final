@@ -6,6 +6,7 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
+import { rateLimit } from "@/lib/rate-limit";
 import { sunbirdTTS } from "@/lib/sunbird/client";
 
 // Luganda speaker IDs available on Sunbird
@@ -17,7 +18,14 @@ const SPEAKER_IDS: Record<string, number> = {
 };
 
 export async function POST(req: NextRequest) {
-  await auth.protect();
+  const { userId } = await auth.protect();
+  const { allowed, retryAfterMs } = rateLimit(`tts:${userId}`, 30, 60_000);
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many requests" }, {
+      status: 429,
+      headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) },
+    });
+  }
 
   const { text, langCode = "lug" } = await req.json();
   if (!text?.trim()) {

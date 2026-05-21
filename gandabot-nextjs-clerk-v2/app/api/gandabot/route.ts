@@ -7,6 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { rateLimit } from "@/lib/rate-limit";
 import { sunbirdChat } from "@/lib/sunbird/client";
 
 const SYSTEM_PROMPT = `You are GandaBot, a warm and knowledgeable AI assistant for learning Ugandan languages and culture. You are powered by Sunbird AI, built in Uganda for Africa.
@@ -32,6 +33,15 @@ const FALLBACK_RESPONSES = [
 ];
 
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anon";
+  const { allowed, retryAfterMs } = rateLimit(`gandabot:${ip}`, 20, 60_000);
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many requests" }, {
+      status: 429,
+      headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) },
+    });
+  }
+
   const { messages, language = "Luganda" } = await req.json();
 
   const systemPrompt = `${SYSTEM_PROMPT}\n\nThe user is currently learning: ${language}. Focus your responses and examples on ${language} language and related culture.`;

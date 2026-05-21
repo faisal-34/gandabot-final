@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GandaBot Translator</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="logo">
+      <img src="icons/icon-48.png" alt="GandaBot" width="28" height="28" />
+      <span class="logo-text">GandaBot</span>
+    </div>
+    <a href="https://www.gandabot.com" target="_blank" class="open-app" title="Open full app">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+        <polyline points="15 3 21 3 21 9"/>
+        <line x1="10" y1="14" x2="21" y2="3"/>
+      </svg>
+    </a>
+  </header>
+
+  <!-- Language selector row -->
+  <div class="lang-row">
+    <div class="lang-select-wrap">
+      <select id="sourceLang" class="lang-select">
+        <option value="eng">English</option>
+        <option value="lug">Luganda</option>
+        <option value="ach">Acholi</option>
+        <option value="teo">Ateso</option>
+        <option value="nyn">Runyankore</option>
+        <option value="lgg">Lugbara</option>
+        <option value="lnk">Langi</option>
+        <option value="sog">Lusoga</option>
+        <option value="ttj">Rutooro</option>
+      </select>
+    </div>
+
+    <button id="swapBtn" class="swap-btn" title="Swap languages">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="17 1 21 5 17 9"/>
+        <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+        <polyline points="7 23 3 19 7 15"/>
+        <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+      </svg>
+    </button>
+
+    <div class="lang-select-wrap">
+      <select id="targetLang" class="lang-select">
+        <option value="lug">Luganda</option>
+        <option value="eng">English</option>
+        <option value="ach">Acholi</option>
+        <option value="teo">Ateso</option>
+        <option value="nyn">Runyankore</option>
+        <option value="lgg">Lugbara</option>
+        <option value="lnk">Langi</option>
+        <option value="sog">Lusoga</option>
+        <option value="ttj">Rutooro</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Source textarea -->
+  <div class="textarea-wrap">
+    <textarea
+      id="sourceText"
+      class="textarea"
+      placeholder="Type or paste text to translate…"
+      rows="4"
+      maxlength="1000"
+    ></textarea>
+    <div class="textarea-actions">
+      <span id="charCount" class="char-count">0 / 1000</span>
+      <button id="clearBtn" class="icon-btn" title="Clear">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Translate button -->
+  <button id="translateBtn" class="translate-btn">
+    <span id="btnText">Translate</span>
+    <span id="btnSpinner" class="spinner hidden"></span>
+  </button>
+
+  <!-- Output -->
+  <div class="output-wrap" id="outputWrap">
+    <div class="output-header">
+      <span class="output-lang" id="outputLangLabel">Luganda</span>
+      <div class="output-actions">
+        <button id="copyBtn" class="icon-btn" title="Copy translation">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+        </button>
+        <button id="speakBtn" class="icon-btn" title="Read aloud">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div id="outputText" class="output-text"></div>
+    <div id="errorMsg" class="error-msg hidden"></div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <span>Powered by <a href="https://www.gandabot.com" target="_blank">GandaBot</a></span>
+    <span class="footer-sep">·</span>
+    <span>Sunbird AI</span>
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>

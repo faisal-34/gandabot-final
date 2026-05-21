@@ -1,0 +1,85 @@
+/* ── GandaBot inline translation tooltip ─────────────────────────────── */
+
+.gandabot-tooltip {
+  all: initial;
+  position: absolute;
+  z-index: 2147483647;
+  width: 280px;
+  background: #0C1F17;
+  border: 1px solid rgba(33,144,121,0.35);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.55), 0 0 0 1px rgba(33,144,121,0.1);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #e8f5f1;
+  overflow: hidden;
+  animation: gb-fadein 0.18s ease;
+}
+
+@keyframes gb-fadein {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.gb-tip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: #183626;
+  border-bottom: 1px solid rgba(33,144,121,0.25);
+}
+
+.gb-tip-lang {
+  font-size: 11px;
+  font-weight: 700;
+  color: #2ab89b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.gb-tip-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.gb-tip-btn {
+  all: unset;
+  cursor: pointer;
+  color: #7aada0;
+  padding: 3px 4px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s, background 0.15s;
+  line-height: 1;
+}
+
+.gb-tip-btn:hover {
+  color: #e8f5f1;
+  background: rgba(255,255,255,0.08);
+}
+
+.gb-tip-text {
+  padding: 10px 12px 8px;
+  color: #e8f5f1;
+  font-size: 13.5px;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.gb-tip-link {
+  all: unset;
+  display: block;
+  padding: 6px 12px 8px;
+  font-size: 11px;
+  color: #7aada0;
+  cursor: pointer;
+  border-top: 1px solid rgba(33,144,121,0.15);
+  transition: color 0.15s;
+}
+
+.gb-tip-link:hover {
+  color: #2ab89b;
+}
