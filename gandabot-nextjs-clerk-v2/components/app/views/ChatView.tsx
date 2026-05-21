@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { cacheChatMessages, getCachedChatMessages, isOnline } from "@/lib/offline-cache";
+import { nativeSpeak, stopSpeaking, isNativePlatform } from "@/lib/native-tts";
+import { donateChatIntent } from "@/lib/siri-shortcuts";
 
 interface Message {
   role: "user" | "assistant";
@@ -36,6 +39,15 @@ const WELCOME: Record<string, string> = {
   swh: "Karibu — Welcome! I'm GandaBot, your guide to Swahili and East African culture. Ask me about vocabulary, grammar, or culture. Twende! 🌍",
 };
 
+const OFFLINE_REPLIES: Record<string, string> = {
+  lug: "Nkwetaaga — You're offline! Here's what I know from memory: 'Oli otya?' means 'How are you?' and 'Webale nyo' means 'Thank you very much'. Reconnect for full AI responses.",
+  ach: "You're offline! Here's an Acholi phrase: 'Apwoyo' means 'Thank you'. Reconnect for full AI responses.",
+  teo: "You're offline! Here's an Ateso phrase: 'Ejok' means 'Good'. Reconnect for full AI responses.",
+  nyn: "You're offline! Here's a Runyankole phrase: 'Agandi' means 'Hello'. Reconnect for full AI responses.",
+  lgg: "You're offline! Here's a Lugbara phrase: 'Nzia' means 'Good'. Reconnect for full AI responses.",
+  swh: "You're offline! Here's a Swahili phrase: 'Habari' means 'How are you?'. Reconnect for full AI responses.",
+};
+
 export function ChatView() {
   const [language, setLanguage] = useState("lug");
   const [messages, setMessages] = useState<Message[]>([
@@ -44,6 +56,8 @@ export function ChatView() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [ttsLoadingIdx, setTtsLoadingIdx] = useState<number | null>(null);
+  const [offline, setOffline] = useState(false);
+  const [isNative, setIsNative] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -51,10 +65,40 @@ export function ChatView() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  function switchLanguage(lang: string) {
+  // Detect platform + restore cached conversation
+  useEffect(() => {
+    setIsNative(isNativePlatform());
+    setOffline(!isOnline());
+
+    getCachedChatMessages("lug").then((cached) => {
+      if (cached.length > 1) setMessages(cached);
+    });
+
+    const handleOnline = () => setOffline(false);
+    const handleOffline = () => setOffline(true);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  async function switchLanguage(lang: string) {
     setLanguage(lang);
-    setMessages([{ role: "assistant", content: WELCOME[lang] ?? WELCOME.lug }]);
     setInput("");
+
+    // Restore cached history for this language if available
+    const cached = await getCachedChatMessages(lang);
+    if (cached.length > 0) {
+      setMessages(cached);
+    } else {
+      setMessages([{ role: "assistant", content: WELCOME[lang] ?? WELCOME.lug }]);
+    }
+
+    // Donate Siri intent
+    const label = LANGUAGES.find((l) => l.code === lang)?.label ?? lang;
+    await donateChatIntent(label);
   }
 
   async function send(text?: string) {
@@ -65,6 +109,17 @@ export function ChatView() {
     const newMessages: Message[] = [...messages, { role: "user", content }];
     setMessages(newMessages);
     setLoading(true);
+
+    // Offline mode — serve a cached reply
+    if (!isOnline()) {
+      const offlineReply = OFFLINE_REPLIES[language] ?? OFFLINE_REPLIES.lug;
+      const withReply = [...newMessages, { role: "assistant" as const, content: offlineReply }];
+      setMessages(withReply);
+      await cacheChatMessages(language, withReply);
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch("/api/gandabot", {
         method: "POST",
@@ -72,15 +127,20 @@ export function ChatView() {
         body: JSON.stringify({ messages: newMessages, language: langLabel }),
       });
       const data = await res.json();
-      setMessages([...newMessages, {
-        role: "assistant",
-        content: data.reply || "Bambi — something went wrong. Please try again.",
-      }]);
+      const withReply: Message[] = [
+        ...newMessages,
+        { role: "assistant", content: data.reply || "Bambi — something went wrong. Please try again." },
+      ];
+      setMessages(withReply);
+      // Persist conversation
+      await cacheChatMessages(language, withReply);
     } catch {
-      setMessages([...newMessages, {
-        role: "assistant",
-        content: "Nkwetaaga okugenda briefly — please try again!",
-      }]);
+      const withError: Message[] = [
+        ...newMessages,
+        { role: "assistant", content: "Nkwetaaga okugenda briefly — please try again!" },
+      ];
+      setMessages(withError);
+      await cacheChatMessages(language, withError);
     } finally {
       setLoading(false);
     }
@@ -89,6 +149,15 @@ export function ChatView() {
   async function playTTS(text: string, idx: number) {
     const ttsLang = TTS_SUPPORTED.includes(language) ? language : "lug";
     setTtsLoadingIdx(idx);
+    await stopSpeaking();
+
+    // iOS: use AVSpeechSynthesizer natively
+    if (isNative) {
+      const spoke = await nativeSpeak(text, ttsLang);
+      if (spoke) { setTtsLoadingIdx(null); return; }
+    }
+
+    // Web / fallback
     try {
       const res = await fetch("/api/tts", {
         method: "POST",
@@ -122,8 +191,17 @@ export function ChatView() {
           <div className="text-xs opacity-50" style={{ color: "var(--cream)" }}>AI Language Tutor · Sunbird AI</div>
         </div>
         <div className="ml-auto flex items-center gap-2 shrink-0">
-          <div className="w-2 h-2 rounded-full bg-green-400" />
-          <span className="text-xs opacity-50 hidden sm:block" style={{ color: "var(--cream)" }}>Online</span>
+          {offline ? (
+            <span className="text-xs px-2 py-0.5 rounded-full border"
+              style={{ color: "var(--orange)", borderColor: "var(--orange)", background: "rgba(244,123,32,0.08)" }}>
+              Offline
+            </span>
+          ) : (
+            <>
+              <div className="w-2 h-2 rounded-full bg-green-400" />
+              <span className="text-xs opacity-50 hidden sm:block" style={{ color: "var(--cream)" }}>Online</span>
+            </>
+          )}
         </div>
       </div>
 
@@ -162,14 +240,13 @@ export function ChatView() {
               >
                 {msg.content}
               </div>
-              {/* TTS on assistant messages */}
               {msg.role === "assistant" && (
                 <button
                   onClick={() => playTTS(msg.content, i)}
                   disabled={ttsLoadingIdx === i}
                   className="self-start flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-opacity cursor-pointer disabled:opacity-40 hover:opacity-100"
                   style={{ color: "var(--teal)", opacity: 0.5 }}
-                  title="Listen"
+                  title={isNative ? "Listen (AVFoundation)" : "Listen"}
                 >
                   {ttsLoadingIdx === i ? (
                     <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -227,7 +304,7 @@ export function ChatView() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-            placeholder={`Ask about ${currentLangLabel}…`}
+            placeholder={offline ? `Ask about ${currentLangLabel} (offline mode)…` : `Ask about ${currentLangLabel}…`}
             className="flex-1 resize-none px-4 py-3 rounded-xl border border-white/20 bg-white/5 text-sm outline-none focus:border-teal-500"
             style={{ color: "var(--cream)", maxHeight: "120px" }}
           />

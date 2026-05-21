@@ -22,10 +22,13 @@
     "store:ios": "npm run build && npm run cap:build:ios"
   },
   "dependencies": {
+    "@capacitor-community/text-to-speech": "^8.0.0",
     "@capacitor/android": "^7.0.0",
+    "@capacitor/app": "^8.1.0",
     "@capacitor/cli": "^7.0.0",
     "@capacitor/core": "^7.0.0",
     "@capacitor/ios": "^7.0.0",
+    "@capacitor/preferences": "^8.0.1",
     "@clerk/nextjs": "^6.12.12",
     "@ducanh2912/next-pwa": "^10.2.9",
     "@vercel/blob": "^2.4.0",

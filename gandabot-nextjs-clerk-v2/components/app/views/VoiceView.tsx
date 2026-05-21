@@ -1,16 +1,10 @@
 "use client";
 
-import { useState, useRef } from "react";
-
-interface TranslationResult {
-  original: string;
-  translated: string;
-  sourceLang: string;
-  targetLang: string;
-  cultural: string;
-  english?: string;
-  luganda?: string;
-}
+import { useState, useRef, useEffect } from "react";
+import type { TranslationResult } from "@/lib/native-types";
+import { cacheTranslation, getCachedTranslations, isOnline } from "@/lib/offline-cache";
+import { nativeSpeak, stopSpeaking, isNativePlatform } from "@/lib/native-tts";
+import { donateTranslateIntent, initSiriLinkHandler } from "@/lib/siri-shortcuts";
 
 const LANGUAGES = [
   { code: "eng", label: "English" },
@@ -41,7 +35,35 @@ export function VoiceView() {
   const [ttsLoading, setTtsLoading] = useState(false);
   const [ttsError, setTtsError] = useState("");
   const [history, setHistory] = useState<TranslationResult[]>([]);
+  const [offline, setOffline] = useState(false);
+  const [isNative, setIsNative] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Load cached translations + detect platform on mount
+  useEffect(() => {
+    setIsNative(isNativePlatform());
+    setOffline(!isOnline());
+
+    getCachedTranslations().then((cached) => {
+      if (cached.length > 0) setHistory(cached);
+    });
+
+    // Register Siri deep-link handler — auto-fills the form when opened via Siri
+    initSiriLinkHandler((from, to, phrase) => {
+      setSourceLang(from);
+      setTargetLang(to);
+      if (phrase) translate(phrase, from, to);
+    });
+
+    const handleOnline = () => setOffline(false);
+    const handleOffline = () => setOffline(true);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function swapLanguages() {
     setSourceLang(targetLang);
@@ -50,30 +72,72 @@ export function VoiceView() {
     setText("");
   }
 
-  async function translate(input?: string) {
+  async function translate(input?: string, overrideSource?: string, overrideTarget?: string) {
     const query = (input || text).trim();
     if (!query) return;
+    const src = overrideSource ?? sourceLang;
+    const tgt = overrideTarget ?? targetLang;
     setText(query);
     setLoading(true);
     setResult(null);
     setTtsError("");
+
+    // Offline: search cache first
+    if (!isOnline()) {
+      const cached = await getCachedTranslations();
+      const hit = cached.find(
+        (t) => t.original.toLowerCase() === query.toLowerCase() && t.sourceLang === src && t.targetLang === tgt
+      );
+      if (hit) {
+        setResult(hit);
+        setLoading(false);
+        return;
+      }
+      setLoading(false);
+      setTtsError("You're offline — no cached result for this phrase.");
+      return;
+    }
+
     try {
       const res = await fetch("/api/voice-assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: query, sourceLang, targetLang }),
+        body: JSON.stringify({ text: query, sourceLang: src, targetLang: tgt }),
       });
       const data: TranslationResult = await res.json();
       setResult(data);
-      setHistory((h) => [data, ...h].slice(0, 10));
-    } catch { /* silent */ }
-    finally { setLoading(false); }
+
+      // Persist to cache + update history
+      await cacheTranslation(data);
+      setHistory((h) => {
+        const filtered = h.filter(
+          (t) => !(t.original === data.original && t.sourceLang === data.sourceLang && t.targetLang === data.targetLang)
+        );
+        return [data, ...filtered].slice(0, 10);
+      });
+
+      // Donate Siri shortcut
+      await donateTranslateIntent({ sourceLang: src, targetLang: tgt, phrase: query });
+    } catch {
+      setTtsError("Translation failed — check your connection.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function playTTS() {
     if (!result?.translated) return;
     setTtsLoading(true);
     setTtsError("");
+    await stopSpeaking();
+
+    // iOS: use AVSpeechSynthesizer (native) — satisfies Apple 4.2
+    if (isNative) {
+      const spoke = await nativeSpeak(result.translated, targetLang);
+      if (spoke) { setTtsLoading(false); return; }
+    }
+
+    // Web / fallback: Sunbird TTS API
     try {
       const res = await fetch("/api/tts", {
         method: "POST",
@@ -104,13 +168,22 @@ export function VoiceView() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-black mb-1" style={{ fontFamily: "Fraunces, serif", color: "var(--cream)" }}>
-          Voice Assistant
-        </h1>
-        <p className="text-sm opacity-50" style={{ color: "var(--cream)" }}>
-          Translate across Ugandan languages · powered by Sunbird AI
-        </p>
+      <div className="mb-8 flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-black mb-1" style={{ fontFamily: "Fraunces, serif", color: "var(--cream)" }}>
+            Voice Assistant
+          </h1>
+          <p className="text-sm opacity-50" style={{ color: "var(--cream)" }}>
+            Translate across Ugandan languages · powered by Sunbird AI
+          </p>
+        </div>
+        {/* Offline badge */}
+        {offline && (
+          <span className="text-xs px-2 py-1 rounded-full border shrink-0"
+            style={{ color: "var(--orange)", borderColor: "var(--orange)", background: "rgba(244,123,32,0.08)" }}>
+            Offline
+          </span>
+        )}
       </div>
 
       {/* Language selector */}
@@ -232,7 +305,7 @@ export function VoiceView() {
                       disabled={ttsLoading || !result.translated}
                       className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors cursor-pointer disabled:opacity-40"
                       style={{ background: "rgba(33,144,121,0.2)", color: "var(--teal)" }}
-                      title={`Listen in ${targetLangLabel}`}
+                      title={isNative ? `Listen (AVSpeechSynthesizer)` : `Listen in ${targetLangLabel}`}
                     >
                       {ttsLoading ? (
                         <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -271,19 +344,22 @@ export function VoiceView() {
             <div className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--teal)" }} />
             <p className="text-xs opacity-30" style={{ color: "var(--cream)" }}>
               Sunbird AI · {sourceLangLabel} → {targetLangLabel}
+              {isNative && " · AVFoundation audio"}
             </p>
           </div>
         </div>
       )}
 
-      {/* History */}
+      {/* History (offline-capable) */}
       {history.length > 0 && (
         <div>
-          <p className="text-xs opacity-40 mb-3" style={{ color: "var(--cream)" }}>RECENT TRANSLATIONS</p>
+          <p className="text-xs opacity-40 mb-3" style={{ color: "var(--cream)" }}>
+            RECENT TRANSLATIONS{offline ? " (cached)" : ""}
+          </p>
           <div className="flex flex-col gap-2">
             {history.slice(0, 5).map((h, i) => (
               <button key={i}
-                onClick={() => { setText(h.original); setResult(h); }}
+                onClick={() => { setText(h.original); setSourceLang(h.sourceLang); setTargetLang(h.targetLang); setResult(h); }}
                 className="flex items-center gap-3 px-4 py-3 rounded-xl border border-white/10 hover:border-teal-500/30 transition-colors text-left cursor-pointer"
                 style={{ background: "rgba(255,255,255,0.03)" }}>
                 <div className="flex-1 min-w-0">
