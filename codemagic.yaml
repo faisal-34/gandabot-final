@@ -33,21 +33,9 @@ workflows:
           # never match.  Write IDs to a file (avoids subshell env issues with
           # piped while-loops) then delete each one.
           echo "=== Revoking existing IOS_DISTRIBUTION certificates ==="
-          app-store-connect certificates list \
-            --type IOS_DISTRIBUTION \
-            --json 2>/dev/null \
-          | python3 -c "
-import sys, json
-try:
-    data = json.loads(sys.stdin.read())
-    certs = data if isinstance(data, list) else data.get('data', [])
-    for c in certs:
-        cid = c.get('id') if isinstance(c, dict) else None
-        if cid:
-            print(cid)
-except Exception as e:
-    sys.stderr.write(str(e))
-" > /tmp/cert_ids.txt 2>/dev/null || true
+          app-store-connect certificates list --type IOS_DISTRIBUTION --json 2>/dev/null \
+            | python3 -c "import sys,json;d=json.loads(sys.stdin.read());certs=d if isinstance(d,list) else d.get('data',[]);[print(c['id']) for c in certs if isinstance(c,dict) and c.get('id')]" \
+            > /tmp/cert_ids.txt 2>/dev/null || true
 
           if [ -s /tmp/cert_ids.txt ]; then
             while IFS= read -r CERT_ID; do
