@@ -3,9 +3,9 @@
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "com.gandabot.app",
+      "package_name": "com.fabeel.gandabot",
       "sha256_cert_fingerprints": [
-        "05:49:B1:FB:7B:07:17:2D:62:8F:70:36:F1:27:79:C0:35:A5:88:5D:8F:8E:17:1F:75:B0:F2:6B:07:27:F8:F7"
+        "88:A2:D9:FA:01:2F:C7:D1:21:46:56:0F:47:6B:8F:5C:C0:9C:3A:0C:3E:BC:30:DC:5B:82:5F:B3:F7:C6:B6:45"
       ]
     }
   }
