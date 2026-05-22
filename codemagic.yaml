@@ -27,32 +27,44 @@ workflows:
           set -e
           keychain initialize
 
-          # ── Delete stale distribution certs left by previous builds ──────────
-          # Each Codemagic Mac is ephemeral; old certs in the portal have no
-          # matching private key here → causes "Cannot save Signing Certificates
-          # without certificate private key".  Wipe them so --create starts fresh.
-          echo "=== Purging stale IOS_DISTRIBUTION certificates ==="
-          STALE_IDS=$(app-store-connect certificates list --type IOS_DISTRIBUTION --json 2>/dev/null \
-            | python3 -c "import sys,json; [print(c['id']) for c in json.load(sys.stdin) if c.get('id')]" \
-            2>/dev/null || true)
+          # ── Revoke ALL existing Distribution certs so Apple allows --create ──
+          # Apple limits accounts to 2 distribution certs.  Each ephemeral
+          # Codemagic Mac generates a new private key, so existing portal certs
+          # never match.  Write IDs to a file (avoids subshell env issues with
+          # piped while-loops) then delete each one.
+          echo "=== Revoking existing IOS_DISTRIBUTION certificates ==="
+          app-store-connect certificates list \
+            --type IOS_DISTRIBUTION \
+            --json 2>/dev/null \
+          | python3 -c "
+import sys, json
+try:
+    data = json.loads(sys.stdin.read())
+    certs = data if isinstance(data, list) else data.get('data', [])
+    for c in certs:
+        cid = c.get('id') if isinstance(c, dict) else None
+        if cid:
+            print(cid)
+except Exception as e:
+    sys.stderr.write(str(e))
+" > /tmp/cert_ids.txt 2>/dev/null || true
 
-          if [ -n "$STALE_IDS" ]; then
-            echo "$STALE_IDS" | while IFS= read -r cid; do
-              echo "  Deleting cert $cid"
-              app-store-connect certificates delete "$cid" || true
-            done
+          if [ -s /tmp/cert_ids.txt ]; then
+            while IFS= read -r CERT_ID; do
+              echo "  Revoking: $CERT_ID"
+              app-store-connect certificates delete "$CERT_ID" || true
+            done < /tmp/cert_ids.txt
+            echo "  Sleeping 5s for Apple API to propagate deletions..."
+            sleep 5
           else
-            echo "  No stale certs found."
+            echo "  No existing distribution certs found."
           fi
 
-          # ── The Codemagic CLI will NOT auto-generate a private key.
-          # fetch-signing-files --create reads CERTIFICATE_PRIVATE_KEY env var
-          # when creating a new distribution cert.  Generate one fresh with
-          # openssl so the key exists on THIS ephemeral Mac.
+          # ── Generate a fresh private key for the new cert ──────────────────
           echo "=== Generating fresh certificate private key ==="
           export CERTIFICATE_PRIVATE_KEY=$(openssl genrsa 2048)
 
-          # ── Fetch/create cert (using the key above) + provisioning profile ──
+          # ── Fetch/create cert + provisioning profile ───────────────────────
           echo "=== Fetching/creating signing files ==="
           app-store-connect fetch-signing-files \
             com.gandabot.app \
