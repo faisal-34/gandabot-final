@@ -51,5 +51,7 @@
 		<string>com.gandabot.app.chat</string>
 		<string>com.gandabot.app.pronounce</string>
 	</array>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>
