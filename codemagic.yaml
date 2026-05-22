@@ -32,10 +32,13 @@ workflows:
           # Codemagic Mac generates a new private key, so existing portal certs
           # never match.  Write IDs to a file (avoids subshell env issues with
           # piped while-loops) then delete each one.
-          echo "=== Revoking existing IOS_DISTRIBUTION certificates ==="
-          app-store-connect certificates list --type IOS_DISTRIBUTION --json 2>/dev/null \
-            | python3 -c "import sys,json;d=json.loads(sys.stdin.read());certs=d if isinstance(d,list) else d.get('data',[]);[print(c['id']) for c in certs if isinstance(c,dict) and c.get('id')]" \
-            > /tmp/cert_ids.txt 2>/dev/null || true
+          echo "=== Revoking all distribution certificates ==="
+          # List ALL certs (no type filter) so we catch both DISTRIBUTION and
+          # IOS_DISTRIBUTION types — the Apple account may use either.
+          app-store-connect certificates list --json 2>/dev/null \
+            | python3 -c "import sys,json;d=json.loads(sys.stdin.read());certs=d if isinstance(d,list) else d.get('data',[]);[print(c.get('id','')) for c in certs if isinstance(c,dict) and c.get('id') and 'DISTRIBUTION' in str(c).upper()]" \
+            | grep -v '^$' > /tmp/cert_ids.txt 2>/dev/null || true
+          echo "Cert IDs to revoke: $(cat /tmp/cert_ids.txt | tr '\n' ' ' || echo '(none)')"
 
           if [ -s /tmp/cert_ids.txt ]; then
             while IFS= read -r CERT_ID; do
