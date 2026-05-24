@@ -1,21 +1,16 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import type { TranslationResult } from "@/lib/native-types";
 import { cacheTranslation, getCachedTranslations, isOnline } from "@/lib/offline-cache";
-import { nativeSpeak, stopSpeaking, isNativePlatform } from "@/lib/native-tts";
 import { donateTranslateIntent, initSiriLinkHandler } from "@/lib/siri-shortcuts";
+import { TRANSLATION_LANGUAGES, TTS_SUPPORTED } from "@/lib/languages";
+import type { TTSApiResponse } from "@/lib/tts";
+import { awardXP } from "@/lib/xp";
+import { useXPToast, XPToastContainer } from "@/components/app/XPToast";
 
-const LANGUAGES = [
-  { code: "eng", label: "English" },
-  { code: "lug", label: "Luganda" },
-  { code: "ach", label: "Acholi" },
-  { code: "teo", label: "Ateso" },
-  { code: "nyn", label: "Runyankole" },
-  { code: "lgg", label: "Lugbara" },
-];
-
-const TTS_SUPPORTED = ["lug", "ach", "teo", "nyn"];
+// VoiceView uses TRANSLATION_LANGUAGES (includes English as a source)
+const LANGUAGES = TRANSLATION_LANGUAGES;
 
 const QUICK_PHRASES = [
   "Good morning, how are you?",
@@ -36,47 +31,71 @@ export function VoiceView() {
   const [ttsError, setTtsError] = useState("");
   const [history, setHistory] = useState<TranslationResult[]>([]);
   const [offline, setOffline] = useState(false);
-  const [isNative, setIsNative] = useState(false);
+  const { toasts, showXP } = useXPToast();
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  // Load cached translations + detect platform on mount
+  // Stable translate ref so Siri link handler doesn't capture a stale closure
+  const translateRef = useRef<typeof translate | null>(null);
+
+  // Load cached translations + set up network listeners on mount
   useEffect(() => {
-    setIsNative(isNativePlatform());
     setOffline(!isOnline());
 
     getCachedTranslations().then((cached) => {
       if (cached.length > 0) setHistory(cached);
     });
 
-    // Register Siri deep-link handler — auto-fills the form when opened via Siri
+    // Register Siri deep-link handler using a stable ref so it always calls
+    // the latest version of translate (avoids stale closure bug)
     initSiriLinkHandler((from, to, phrase) => {
       setSourceLang(from);
       setTargetLang(to);
-      if (phrase) translate(phrase, from, to);
+      if (phrase) translateRef.current?.(phrase, from, to);
     });
 
     const handleOnline = () => setOffline(false);
     const handleOffline = () => setOffline(true);
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
+
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
+      abortRef.current?.abort();
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   function swapLanguages() {
+    // Guard: don't swap if it would result in same source and target
     setSourceLang(targetLang);
     setTargetLang(sourceLang);
     setResult(null);
     setText("");
+    setTtsError("");
   }
 
-  async function translate(input?: string, overrideSource?: string, overrideTarget?: string) {
+  const translate = useCallback(async (
+    input?: string,
+    overrideSource?: string,
+    overrideTarget?: string,
+  ) => {
     const query = (input || text).trim();
     if (!query) return;
+
     const src = overrideSource ?? sourceLang;
     const tgt = overrideTarget ?? targetLang;
+
+    // Guard: prevent translating to the same language
+    if (src === tgt) {
+      setTtsError("Source and target languages must be different.");
+      return;
+    }
+
     setText(query);
     setLoading(true);
     setResult(null);
@@ -86,72 +105,98 @@ export function VoiceView() {
     if (!isOnline()) {
       const cached = await getCachedTranslations();
       const hit = cached.find(
-        (t) => t.original.toLowerCase() === query.toLowerCase() && t.sourceLang === src && t.targetLang === tgt
+        (t) =>
+          t.original.toLowerCase() === query.toLowerCase() &&
+          t.sourceLang === src &&
+          t.targetLang === tgt,
       );
       if (hit) {
         setResult(hit);
-        setLoading(false);
-        return;
+      } else {
+        setTtsError("You're offline — no cached result for this phrase.");
       }
       setLoading(false);
-      setTtsError("You're offline — no cached result for this phrase.");
       return;
     }
+
+    // Cancel any previous in-flight request
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     try {
       const res = await fetch("/api/voice-assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: query, sourceLang: src, targetLang: tgt }),
+        signal: controller.signal,
       });
+
+      if (!res.ok) throw new Error(`API error ${res.status}`);
       const data: TranslationResult = await res.json();
       setResult(data);
+      // Award XP for a successful translation
+      showXP(await awardXP("translation"));
 
-      // Persist to cache + update history
+      // Persist to cache + update local history (dedup by original+langs)
       await cacheTranslation(data);
       setHistory((h) => {
         const filtered = h.filter(
-          (t) => !(t.original === data.original && t.sourceLang === data.sourceLang && t.targetLang === data.targetLang)
+          (t) =>
+            !(t.original === data.original &&
+              t.sourceLang === data.sourceLang &&
+              t.targetLang === data.targetLang),
         );
         return [data, ...filtered].slice(0, 10);
       });
 
       // Donate Siri shortcut
       await donateTranslateIntent({ sourceLang: src, targetLang: tgt, phrase: query });
-    } catch {
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === "AbortError") return;
       setTtsError("Translation failed — check your connection.");
     } finally {
       setLoading(false);
     }
-  }
+  }, [text, sourceLang, targetLang]);
+
+  // Keep the ref in sync so the Siri link handler always calls the latest version
+  useEffect(() => {
+    translateRef.current = translate;
+  }, [translate]);
 
   async function playTTS() {
     if (!result?.translated) return;
-    setTtsLoading(true);
-    setTtsError("");
-    await stopSpeaking();
 
-    // iOS: use AVSpeechSynthesizer (native) — satisfies Apple 4.2
-    if (isNative) {
-      const spoke = await nativeSpeak(result.translated, targetLang);
-      if (spoke) { setTtsLoading(false); return; }
+    // Stop any currently playing audio before starting new one
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
     }
 
-    // Web / fallback: Sunbird TTS API
+    setTtsLoading(true);
+    setTtsError("");
+
     try {
       const res = await fetch("/api/tts", {
-        method: "POST",
+        method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: result.translated, langCode: targetLang }),
+        body:    JSON.stringify({ text: result.translated, langCode: targetLang }),
       });
-      const data = await res.json();
-      if (!res.ok || !data.audioUrl) throw new Error(data.error || "TTS failed");
-      if (audioRef.current) audioRef.current.pause();
+      const data: TTSApiResponse & { error?: string } = await res.json();
+
+      if (!res.ok || !data.audioUrl) {
+        throw new Error(data.error ?? `TTS error ${res.status}`);
+      }
+
+      // audioUrl is a signed GCS link — must start playback within ~2 minutes
       const audio = new Audio(data.audioUrl);
       audioRef.current = audio;
       audio.play();
-    } catch {
-      setTtsError("Could not play audio — try again shortly");
+      audio.onended = () => { audioRef.current = null; };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      setTtsError(msg.startsWith("TTS") ? msg : "Could not play audio — try again shortly");
     } finally {
       setTtsLoading(false);
     }
@@ -163,7 +208,8 @@ export function VoiceView() {
 
   const sourceLangLabel = LANGUAGES.find((l) => l.code === sourceLang)?.label ?? sourceLang;
   const targetLangLabel = LANGUAGES.find((l) => l.code === targetLang)?.label ?? targetLang;
-  const canTTS = TTS_SUPPORTED.includes(targetLang);
+  const canTTS = TTS_SUPPORTED.has(targetLang);
+  const sameLang = sourceLang === targetLang;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
@@ -174,7 +220,7 @@ export function VoiceView() {
             Voice Assistant
           </h1>
           <p className="text-sm opacity-50" style={{ color: "var(--cream)" }}>
-            Translate across Ugandan languages · powered by Sunbird AI
+            Translate across Ugandan languages with audio playback
           </p>
         </div>
         {/* Offline badge */}
@@ -239,9 +285,14 @@ export function VoiceView() {
           className="w-full px-4 py-3 rounded-xl border border-white/20 bg-white/5 text-sm outline-none resize-none mb-3"
           style={{ color: "var(--cream)" }}
         />
+        {sameLang && (
+          <p className="text-xs mb-2 px-1" style={{ color: "var(--orange)" }}>
+            ⚠ Source and target languages are the same — please select different languages.
+          </p>
+        )}
         <button
           onClick={() => translate()}
-          disabled={loading || !text.trim()}
+          disabled={loading || !text.trim() || sameLang}
           className="gb-btn gb-btn-primary w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-40 cursor-pointer"
           style={{ background: "var(--teal)", color: "var(--forest)" }}
         >
@@ -271,7 +322,7 @@ export function VoiceView() {
         <div className="text-center py-8">
           <div className="w-8 h-8 rounded-full border-2 mx-auto mb-3 animate-spin"
             style={{ borderColor: "var(--teal)", borderTopColor: "transparent" }} />
-          <p className="text-sm opacity-50" style={{ color: "var(--cream)" }}>Sunbird AI translating…</p>
+          <p className="text-sm opacity-50" style={{ color: "var(--cream)" }}>GandaBot translating…</p>
         </div>
       )}
 
@@ -287,7 +338,7 @@ export function VoiceView() {
                 </span>
                 <button onClick={() => copy(result.original)}
                   className="text-xs opacity-30 hover:opacity-70 transition-opacity cursor-pointer"
-                  style={{ color: "var(--cream)" }} title="Copy">⎘</button>
+                  style={{ color: "var(--cream)" }} title="Copy" aria-label="Copy to clipboard">⎘</button>
               </div>
               <p className="text-base font-medium leading-relaxed" style={{ color: "var(--cream)" }}>{result.original}</p>
             </div>
@@ -305,7 +356,7 @@ export function VoiceView() {
                       disabled={ttsLoading || !result.translated}
                       className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors cursor-pointer disabled:opacity-40"
                       style={{ background: "rgba(33,144,121,0.2)", color: "var(--teal)" }}
-                      title={isNative ? `Listen (AVSpeechSynthesizer)` : `Listen in ${targetLangLabel}`}
+                      title={`Listen in ${targetLangLabel}`}
                     >
                       {ttsLoading ? (
                         <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -322,7 +373,7 @@ export function VoiceView() {
                   )}
                   <button onClick={() => copy(result.translated)}
                     className="text-xs opacity-50 hover:opacity-100 transition-opacity cursor-pointer"
-                    style={{ color: "var(--teal-light)" }} title="Copy">⎘</button>
+                    style={{ color: "var(--teal-light)" }} title="Copy" aria-label="Copy to clipboard">⎘</button>
                 </div>
               </div>
               <p className="text-base font-semibold leading-relaxed" style={{ color: "var(--teal-light)" }}>{result.translated}</p>
@@ -343,8 +394,7 @@ export function VoiceView() {
           <div className="mt-3 flex items-center gap-1.5">
             <div className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--teal)" }} />
             <p className="text-xs opacity-30" style={{ color: "var(--cream)" }}>
-              Sunbird AI · {sourceLangLabel} → {targetLangLabel}
-              {isNative && " · AVFoundation audio"}
+              GandaBot · {sourceLangLabel} → {targetLangLabel}
             </p>
           </div>
         </div>
@@ -372,6 +422,9 @@ export function VoiceView() {
           </div>
         </div>
       )}
+
+      {/* XP toast */}
+      <XPToastContainer toasts={toasts} />
 
       {/* Empty state */}
       {!result && !loading && history.length === 0 && (

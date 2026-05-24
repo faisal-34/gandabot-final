@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import { ClerkLoaded, ClerkLoading, SignedIn, SignedOut, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
 import {
   MessageSquare, Globe, BookOpen, Volume2, Users, Headphones,
@@ -26,10 +27,10 @@ const TICKER = [
 ];
 
 const STATS = [
-  { n: "50K+", label: "Active Learners",    color: "#219079" },
-  { n: "15",   label: "Languages Supported", color: "#F47B20" },
-  { n: "98%",  label: "Accuracy Rate",       color: "#7056E4" },
-  { n: "24/7", label: "AI Assistance",       color: "#2EB898" },
+  { n: "6",    label: "Ugandan Languages",  color: "#219079" },
+  { n: "4",    label: "AI Learning Tools",  color: "#F47B20" },
+  { n: "24/7", label: "AI Assistance",      color: "#7056E4" },
+  { n: "Free", label: "To Get Started",     color: "#2EB898" },
 ];
 
 const FEATURES = [
@@ -64,7 +65,7 @@ function Header() {
       <div className="max-w-7xl mx-auto px-6 md:px-14 py-4 flex items-center justify-between">
         {/* Logo */}
         <a href="/" className="flex items-center gap-3">
-          <img src="/gandabot-logo-ui.png" alt="GandaBot" width={44} height={44} className="rounded-lg" />
+          <Image src="/gandabot-logo-ui.png" alt="GandaBot" width={44} height={44} className="rounded-lg" priority />
           <span style={{ fontFamily: "Fraunces,Georgia,serif", fontWeight: 700, color: "#F5EDD8" }}>GandaBot</span>
         </a>
 
@@ -157,7 +158,7 @@ function Hero() {
       <div className="absolute inset-0">
         {SLIDES.map((s, i) => (
           <div key={i} className="absolute inset-0 transition-opacity duration-1000" style={{ opacity: i === slide ? 1 : 0 }}>
-            <img src={s.url} alt={s.label} className="w-full h-full object-cover" loading={i === 0 ? "eager" : "lazy"} />
+            <Image src={s.url} alt={s.label} fill className="object-cover" priority={i === 0} />
             <div className="absolute inset-0" style={{ background: "linear-gradient(135deg,rgba(12,31,23,0.94) 0%,rgba(12,31,23,0.7) 55%,rgba(12,31,23,0.9) 100%)" }} />
           </div>
         ))}
@@ -397,7 +398,7 @@ function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-12 mb-16">
           <div className="col-span-2 md:col-span-1">
             <a href="/" className="inline-flex items-center gap-3 mb-5">
-              <img src="/gandabot-logo-ui.png" alt="" width={36} height={36} className="rounded-xl" />
+              <Image src="/gandabot-logo-ui.png" alt="" width={36} height={36} className="rounded-xl" />
               <span style={{ fontFamily: "Fraunces,Georgia,serif", fontWeight: 700, fontSize: "1.1rem", color: "#F5EDD8" }}>GandaBot</span>
             </a>
             <p style={{ color: "rgba(245,237,216,0.38)", fontSize: "0.875rem", lineHeight: 1.8, maxWidth: "22ch" }}>

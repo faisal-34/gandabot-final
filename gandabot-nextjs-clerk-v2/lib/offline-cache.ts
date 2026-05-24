@@ -87,8 +87,42 @@ export async function getCachedChatMessages(
   return (await load<CachedMessage[]>(`chat_${language}`)) ?? [];
 }
 
+/**
+ * Clear cached chat history for a specific language.
+ * Useful for "Clear conversation" user action.
+ */
+export async function clearChatMessages(language: string): Promise<void> {
+  const prefs = await getPreferences();
+  if (prefs) {
+    await prefs.remove({ key: `chat_${language}` });
+  } else {
+    try { localStorage.removeItem(`gb_chat_${language}`); } catch { /* blocked */ }
+  }
+}
+
+/**
+ * Clear ALL GandaBot cached data (translations + all chat histories).
+ * Useful for a "Reset app data" option in ProfileView.
+ */
+export async function clearAllCache(): Promise<void> {
+  const prefs = await getPreferences();
+  if (prefs) {
+    await prefs.clear();
+  } else {
+    try {
+      const keys = Object.keys(localStorage).filter((k) => k.startsWith("gb_"));
+      keys.forEach((k) => localStorage.removeItem(k));
+    } catch { /* blocked */ }
+  }
+}
+
 // ─── Network status ───────────────────────────────────────────────────────────
 
+/**
+ * Returns whether the device appears to be online.
+ * Uses navigator.onLine as the primary signal. Note: onLine can be
+ * true even on a captive portal, so treat as a best-effort heuristic.
+ */
 export function isOnline(): boolean {
   if (typeof navigator === "undefined") return true;
   return navigator.onLine;

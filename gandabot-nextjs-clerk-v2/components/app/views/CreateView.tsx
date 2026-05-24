@@ -236,18 +236,24 @@ function FeedTab({
   const [activeIdx, setActiveIdx] = useState(0);
   const [category, setCategory] = useState("all");
   const [likedIds, setLikedIds] = useState<Set<number>>(new Set());
+  const [feedError, setFeedError] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   async function loadClips() {
     setLoading(true);
+    setFeedError("");
     try {
       const q = category !== "all" ? `?category=${category}` : "";
       const res = await fetch(`/api/create/videos${q}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setClips(Array.isArray(data) ? data : []);
-    } catch { /* silent */ }
-    finally { setLoading(false); }
+    } catch {
+      setFeedError("Could not load GandaFeed — check your connection.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => { loadClips(); }, [category]);
@@ -273,18 +279,49 @@ function FeedTab({
   }, [clips]);
 
   async function handleLike(clipId: number) {
+    // Optimistic update
+    setLikedIds((prev) => {
+      const next = new Set(prev);
+      const isLiked = next.has(clipId);
+      isLiked ? next.delete(clipId) : next.add(clipId);
+      return next;
+    });
+    setClips((prev) =>
+      prev.map((c) => {
+        if (c.id !== clipId) return c;
+        const isCurrentlyLiked = likedIds.has(clipId);
+        return { ...c, likes: c.likes + (isCurrentlyLiked ? -1 : 1) };
+      }),
+    );
+
     try {
       const res = await fetch(`/api/create/videos/${clipId}/like`, { method: "POST" });
+      if (!res.ok) throw new Error("Like failed");
       const data = await res.json();
+      // Sync with server's authoritative state
       setLikedIds((prev) => {
         const next = new Set(prev);
         data.liked ? next.add(clipId) : next.delete(clipId);
         return next;
       });
+      if (typeof data.likes === "number") {
+        setClips((prev) => prev.map((c) => (c.id === clipId ? { ...c, likes: data.likes } : c)));
+      }
+    } catch {
+      // Roll back — server didn't confirm, reverse optimistic changes
+      setLikedIds((prev) => {
+        const next = new Set(prev);
+        next.has(clipId) ? next.delete(clipId) : next.add(clipId);
+        return next;
+      });
       setClips((prev) =>
-        prev.map((c) => (c.id === clipId ? { ...c, likes: data.likes } : c))
+        prev.map((c) => {
+          if (c.id !== clipId) return c;
+          const wasLiked = likedIds.has(clipId);
+          return { ...c, likes: c.likes + (wasLiked ? 1 : -1) };
+        }),
       );
-    } catch { /* silent */ }
+    }
   }
 
   return (
@@ -315,6 +352,16 @@ function FeedTab({
             <div className="w-8 h-8 rounded-full border-2 border-t-transparent mx-auto mb-3 animate-spin"
               style={{ borderColor: "var(--teal)", borderTopColor: "transparent" }} />
             <p className="text-sm">Loading GandaFeed…</p>
+          </div>
+        </div>
+      ) : feedError ? (
+        <div className="flex-1 flex items-center justify-center px-6">
+          <div className="text-center">
+            <div className="text-4xl mb-3">📡</div>
+            <p className="text-sm mb-4" style={{ color: "var(--orange)" }}>{feedError}</p>
+            <button onClick={loadClips} className="px-4 py-2 rounded-xl text-sm border border-white/20 hover:border-teal-500 transition-colors" style={{ color: "var(--cream)" }}>
+              Try again
+            </button>
           </div>
         </div>
       ) : clips.length === 0 ? (
@@ -420,8 +467,8 @@ function UploadTab({ username }: { username: string }) {
       setAudioFile(null);
       setPreviewUrl(null);
       setCaption("");
-    } catch (err: any) {
-      setError(err.message || "Upload failed. Please try again.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Upload failed. Please try again.");
     } finally {
       setUploading(false);
     }
@@ -595,7 +642,14 @@ function RecordTab({ username }: { username: string }) {
   const liveRef = useRef<HTMLVideoElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const MAX_DURATION_SECONDS = 60;
+
   async function startCamera() {
+    // Prevent overlapping stream creation — stop any existing stream first
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
     try {
       // Request BOTH video AND audio — this is the fix for silent recordings
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -606,29 +660,32 @@ function RecordTab({ username }: { username: string }) {
         liveRef.current.muted = true;
         liveRef.current.play().catch(() => {});
       }
-    } catch (err: any) {
+    } catch {
       setError("Camera/mic access denied. Please allow permissions and try again.");
     }
   }
 
   useEffect(() => {
-    startCamera();
+    let watchdogId: ReturnType<typeof setInterval> | null = null;
 
-    // If stream tracks end unexpectedly (permission revoked, device disconnect),
-    // restart the camera automatically
-    const watchdog = setInterval(() => {
-      if (streamRef.current) {
-        const allEnded = streamRef.current.getTracks().every((t) => t.readyState === "ended");
-        if (allEnded) startCamera();
-      }
-    }, 4000);
+    startCamera().then(() => {
+      // Only set up watchdog after initial camera starts — avoids a race where
+      // the watchdog fires before streamRef is populated and double-starts.
+      watchdogId = setInterval(() => {
+        if (streamRef.current) {
+          const allEnded = streamRef.current.getTracks().every((t) => t.readyState === "ended");
+          if (allEnded) startCamera();
+        }
+      }, 5000);
+    });
 
     return () => {
-      clearInterval(watchdog);
+      if (watchdogId) clearInterval(watchdogId);
       streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function startRecording() {
@@ -674,8 +731,18 @@ function RecordTab({ username }: { username: string }) {
     };
     recorder.start(100); // 100ms chunks for smooth recording
 
-    // Duration timer
-    timerRef.current = setInterval(() => setDuration((d) => d + 1), 1000);
+    // Duration timer — auto-stop at MAX_DURATION_SECONDS
+    timerRef.current = setInterval(() => {
+      setDuration((d) => {
+        const next = d + 1;
+        if (next >= MAX_DURATION_SECONDS) {
+          // Stop recording when limit is reached
+          recorderRef.current?.stop();
+          if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+        }
+        return next;
+      });
+    }, 1000);
   }
 
   function stopRecording() {
@@ -709,8 +776,8 @@ function RecordTab({ username }: { username: string }) {
 
       setDone(true);
       setBlobUrl(null);
-    } catch (err: any) {
-      setError(err.message || "Failed. Try again.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed. Try again.");
     } finally {
       setSaving(false);
     }
@@ -753,7 +820,9 @@ function RecordTab({ username }: { username: string }) {
             {recording && (
               <div className="absolute top-3 left-3 flex items-center gap-2 px-2.5 py-1 rounded-full z-20" style={{ background: "rgba(0,0,0,0.6)" }}>
                 <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                <span className="text-white text-xs font-medium">{duration}s</span>
+                <span className="text-white text-xs font-medium">
+                  {duration}s / {MAX_DURATION_SECONDS}s
+                </span>
               </div>
             )}
           </>
@@ -851,8 +920,8 @@ function UsernameModal({
       if (!res.ok) throw new Error(data.error || "Failed");
       onSave(data.username);
       onClose();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setSaving(false);
     }
